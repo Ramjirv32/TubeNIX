@@ -1,274 +1,435 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'profile_screen.dart';
 
-/// Settings Screen
-/// WhatsApp-style settings with profile, account, notifications, privacy
+/// Settings Screen - WhatsApp Style
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0,
+        elevation: 2,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Settings',
-          style: TextStyle(
+          style: GoogleFonts.poppins(
             color: Colors.black,
             fontSize: 20,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
-      body: ListView(
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Profile Section
+            _buildProfileSection(context),
+            const SizedBox(height: 20),
+            
+            // Settings Groups
+            _buildSettingsGroup(
+              'Account',
+              [
+                _buildSettingTile(
+                  Icons.person_outline,
+                  'Profile',
+                  'Update your profile information',
+                  const Color(0xFFFF0000),
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                    );
+                  },
+                ),
+                _buildSettingTile(
+                  Icons.email_outlined,
+                  'Email',
+                  'user@example.com',
+                  Colors.blue,
+                  () {},
+                ),
+                _buildSettingTile(
+                  Icons.lock_outline,
+                  'Change Password',
+                  'Update your password',
+                  Colors.orange,
+                  () {},
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            _buildSettingsGroup(
+              'Preferences',
+              [
+                _buildSettingTile(
+                  Icons.notifications_outlined,
+                  'Notifications',
+                  'Manage notification settings',
+                  Colors.purple,
+                  () {},
+                ),
+                _buildSettingTile(
+                  Icons.language_outlined,
+                  'Language',
+                  'English',
+                  Colors.green,
+                  () {},
+                ),
+                _buildSettingTile(
+                  Icons.dark_mode_outlined,
+                  'Appearance',
+                  'Light mode',
+                  Colors.indigo,
+                  () {},
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            _buildSettingsGroup(
+              'Privacy & Security',
+              [
+                _buildSettingTile(
+                  Icons.privacy_tip_outlined,
+                  'Privacy',
+                  'Manage your privacy settings',
+                  Colors.red,
+                  () {},
+                ),
+                _buildSettingTile(
+                  Icons.security_outlined,
+                  'Security',
+                  'Two-factor authentication',
+                  Colors.orange,
+                  () {},
+                ),
+                _buildSettingTile(
+                  Icons.block_outlined,
+                  'Blocked Users',
+                  'Manage blocked accounts',
+                  Colors.grey,
+                  () {},
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            _buildSettingsGroup(
+              'Support',
+              [
+                _buildSettingTile(
+                  Icons.help_outline,
+                  'Help Center',
+                  'Get help and support',
+                  Colors.blue,
+                  () {},
+                ),
+                _buildSettingTile(
+                  Icons.info_outline,
+                  'About',
+                  'Version 1.0.0',
+                  Colors.teal,
+                  () {},
+                ),
+                _buildSettingTile(
+                  Icons.feedback_outlined,
+                  'Send Feedback',
+                  'Share your thoughts',
+                  Colors.amber,
+                  () {},
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            // Logout Button
+            _buildLogoutButton(context),
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileSection(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Avatar
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF0000).withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 35,
+              ),
+            ),
+            const SizedBox(width: 16),
+            
+            // User Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'John Doe',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Content Creator',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Pro Member',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Arrow
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsGroup(String title, List<Widget> children) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Profile Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
-                    ),
-                    borderRadius: BorderRadius.circular(32),
-                  ),
-                  child: const Icon(
-                    Icons.person,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Content Creator',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'creator@tubenix.com',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.qr_code, color: Color(0xFFFF6B00)),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          const SizedBox(height: 8),
-
-          // Account Settings
-          _buildSectionHeader('Account'),
-          _buildSettingsTile(
-            icon: Icons.key,
-            title: 'Account',
-            subtitle: 'Security, change number, delete',
-            onTap: () {},
-          ),
-          _buildSettingsTile(
-            icon: Icons.lock,
-            title: 'Privacy',
-            subtitle: 'Block contacts, disappearing messages',
-            onTap: () {},
-          ),
-          _buildSettingsTile(
-            icon: Icons.person_outline,
-            title: 'Profile',
-            subtitle: 'Name, about, avatar',
-            onTap: () {},
-          ),
-          const SizedBox(height: 8),
-
-          // Preferences
-          _buildSectionHeader('Preferences'),
-          _buildSettingsTile(
-            icon: Icons.notifications,
-            title: 'Notifications',
-            subtitle: 'Message, group & call tones',
-            onTap: () {},
-          ),
-          _buildSettingsTile(
-            icon: Icons.data_usage,
-            title: 'Storage and data',
-            subtitle: 'Network usage, auto-download',
-            onTap: () {},
-          ),
-          _buildSettingsTile(
-            icon: Icons.language,
-            title: 'App language',
-            subtitle: 'English (device\'s language)',
-            onTap: () {},
-          ),
-          const SizedBox(height: 8),
-
-          // App Settings
-          _buildSectionHeader('App Settings'),
-          _buildSettingsTile(
-            icon: Icons.help_outline,
-            title: 'Help',
-            subtitle: 'Help center, contact us, privacy policy',
-            onTap: () {},
-          ),
-          _buildSettingsTile(
-            icon: Icons.group,
-            title: 'Invite a friend',
-            subtitle: 'Share TubeNix with friends',
-            onTap: () {},
-          ),
-          _buildSettingsTile(
-            icon: Icons.info_outline,
-            title: 'About',
-            subtitle: 'Version 1.0.0',
-            onTap: () {},
-          ),
-          const SizedBox(height: 24),
-
-          // Logout Button
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: OutlinedButton.icon(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    backgroundColor: Colors.white,
-                    title: const Text(
-                      'Logout',
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    content: const Text(
-                      'Are you sure you want to logout?',
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamedAndRemoveUntil(
-                            context,
-                            '/login',
-                            (route) => false,
-                          );
-                        },
-                        child: const Text(
-                          'Logout',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              icon: const Icon(Icons.logout, color: Colors.red),
-              label: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.red),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                side: const BorderSide(color: Colors.red),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Text(
+              title,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade600,
               ),
             ),
           ),
-          const SizedBox(height: 24),
-
-          // Footer
-          Center(
-            child: Column(
-              children: [
-                const Text(
-                  'TubeNix',
-                  style: TextStyle(
-                    color: Colors.black54,
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Made with ❤️ for creators',
-                  style: TextStyle(
-                    color: Colors.black.withOpacity(0.4),
-                    fontSize: 10,
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
+          ...children,
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Color(0xFFFF6B00),
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
+  Widget _buildSettingTile(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color iconColor,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 14,
+              color: Colors.grey,
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildSettingsTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.black54),
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.black,
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
+  Widget _buildLogoutButton(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                title: Text(
+                  'Logout',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                ),
+                content: Text(
+                  'Are you sure you want to logout?',
+                  style: GoogleFonts.poppins(),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.poppins(color: Colors.grey),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.pop(context);
+                    },
+                    child: Text(
+                      'Logout',
+                      style: GoogleFonts.poppins(color: Colors.red),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(15),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.logout, color: Colors.red),
+                const SizedBox(width: 12),
+                Text(
+                  'Logout',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(
-          color: Colors.black54,
-          fontSize: 13,
-        ),
-      ),
-      onTap: onTap,
     );
   }
 }
