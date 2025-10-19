@@ -44,10 +44,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: Text(
           'Analytics',
           style: GoogleFonts.poppins(
@@ -299,104 +296,131 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   }
 
   Widget _buildBarChart() {
-    return FadeTransition(
-      opacity: _animation,
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: 100,
-          barTouchData: BarTouchData(
-            touchTooltipData: BarTouchTooltipData(
-              tooltipBgColor: Colors.grey.shade800,
-              tooltipPadding: const EdgeInsets.all(8),
-              tooltipMargin: 8,
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                return BarTooltipItem(
-                  '${rod.toY.round()}K',
-                  GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              },
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: 100,
+            barTouchData: BarTouchData(
+              enabled: true,
+              touchTooltipData: BarTouchTooltipData(
+                tooltipBgColor: Colors.grey.shade900,
+                tooltipRoundedRadius: 12,
+                tooltipPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                tooltipMargin: 8,
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                  return BarTooltipItem(
+                    '${days[groupIndex]}\n',
+                    GoogleFonts.poppins(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '${rod.toY.round()}K views',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              handleBuiltInTouches: true,
             ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      days[value.toInt() % days.length],
+            titlesData: FlTitlesData(
+              show: true,
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        days[value.toInt() % days.length],
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    );
+                  },
+                  reservedSize: 30,
+                ),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (value, meta) {
+                    return Text(
+                      '${value.toInt()}K',
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         color: Colors.grey.shade600,
                       ),
-                    ),
-                  );
-                },
-                reservedSize: 30,
+                    );
+                  },
+                ),
+              ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
               ),
             ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    '${value.toInt()}K',
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: Colors.grey.shade600,
-                    ),
-                  );
-                },
-              ),
+            borderData: FlBorderData(show: false),
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              getDrawingHorizontalLine: (value) {
+                return FlLine(
+                  color: Colors.grey.shade200,
+                  strokeWidth: 1,
+                );
+              },
             ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
+            barGroups: [
+              _buildBarGroup(0, 45, 0.0),
+              _buildBarGroup(1, 65, 0.1),
+              _buildBarGroup(2, 55, 0.2),
+              _buildBarGroup(3, 80, 0.3),
+              _buildBarGroup(4, 70, 0.4),
+              _buildBarGroup(5, 85, 0.5),
+              _buildBarGroup(6, 90, 0.6),
+            ],
           ),
-          borderData: FlBorderData(show: false),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
-                color: Colors.grey.shade200,
-                strokeWidth: 1,
-              );
-            },
-          ),
-          barGroups: [
-            _buildBarGroup(0, 45),
-            _buildBarGroup(1, 65),
-            _buildBarGroup(2, 55),
-            _buildBarGroup(3, 80),
-            _buildBarGroup(4, 70),
-            _buildBarGroup(5, 85),
-            _buildBarGroup(6, 90),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 
-  BarChartGroupData _buildBarGroup(int x, double y) {
+  BarChartGroupData _buildBarGroup(int x, double y, double delay) {
+    // Staggered animation with bounce effect
+    final progress = Curves.elasticOut.transform(
+      ((_animation.value - delay) / (1 - delay)).clamp(0.0, 1.0),
+    );
+    
     return BarChartGroupData(
       x: x,
       barRods: [
         BarChartRodData(
-          toY: y,
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
+          toY: y * progress,
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFFFF0000).withOpacity(0.8),
+              const Color(0xFFFF6B00),
+            ],
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
           ),
@@ -410,106 +434,176 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   }
 
   Widget _buildLineChart() {
-    return FadeTransition(
-      opacity: _animation,
-      child: LineChart(
-        LineChartData(
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            getDrawingHorizontalLine: (value) {
-              return FlLine(
-                color: Colors.grey.shade200,
-                strokeWidth: 1,
-              );
-            },
-          ),
-          titlesData: FlTitlesData(
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      days[value.toInt() % days.length],
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        // Animate the line drawing from left to right
+        final spots = [
+          const FlSpot(0, 45),
+          const FlSpot(1, 65),
+          const FlSpot(2, 55),
+          const FlSpot(3, 80),
+          const FlSpot(4, 70),
+          const FlSpot(5, 85),
+          const FlSpot(6, 90),
+        ];
+        
+        // Calculate how many points to show based on animation progress
+        final visibleSpots = _animation.value < 1.0
+            ? spots.take((_animation.value * spots.length).ceil()).toList()
+            : spots;
+        
+        return LineChart(
+          LineChartData(
+            lineTouchData: LineTouchData(
+              enabled: true,
+              touchTooltipData: LineTouchTooltipData(
+                tooltipBgColor: Colors.grey.shade900,
+                tooltipRoundedRadius: 12,
+                tooltipPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                  return touchedSpots.map((spot) {
+                    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                    return LineTooltipItem(
+                      '${days[spot.x.toInt()]}\n',
+                      GoogleFonts.poppins(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: '${spot.y.round()}K views',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    );
+                  }).toList();
+                },
+              ),
+              handleBuiltInTouches: true,
+              getTouchedSpotIndicator: (LineChartBarData barData, List<int> spotIndexes) {
+                return spotIndexes.map((index) {
+                  return TouchedSpotIndicatorData(
+                    FlLine(
+                      color: const Color(0xFFFF6B00),
+                      strokeWidth: 3,
+                      dashArray: [5, 5],
+                    ),
+                    FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 8,
+                          color: Colors.white,
+                          strokeWidth: 3,
+                          strokeColor: const Color(0xFFFF6B00),
+                        );
+                      },
+                    ),
+                  );
+                }).toList();
+              },
+            ),
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              getDrawingHorizontalLine: (value) {
+                return FlLine(
+                  color: Colors.grey.shade200,
+                  strokeWidth: 1,
+                );
+              },
+            ),
+            titlesData: FlTitlesData(
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        days[value.toInt() % days.length],
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    );
+                  },
+                  reservedSize: 30,
+                ),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (value, meta) {
+                    return Text(
+                      '${value.toInt()}K',
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         color: Colors.grey.shade600,
                       ),
-                    ),
-                  );
-                },
-                reservedSize: 30,
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    '${value.toInt()}K',
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: Colors.grey.shade600,
-                    ),
-                  );
-                },
-              ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: const [
-                FlSpot(0, 45),
-                FlSpot(1, 65),
-                FlSpot(2, 55),
-                FlSpot(3, 80),
-                FlSpot(4, 70),
-                FlSpot(5, 85),
-                FlSpot(6, 90),
-              ],
-              isCurved: true,
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
-              ),
-              barWidth: 3,
-              isStrokeCapRound: true,
-              dotData: FlDotData(
-                show: true,
-                getDotPainter: (spot, percent, barData, index) {
-                  return FlDotCirclePainter(
-                    radius: 4,
-                    color: Colors.white,
-                    strokeWidth: 2,
-                    strokeColor: const Color(0xFFFF6B00),
-                  );
-                },
-              ),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFFFF0000).withOpacity(0.2),
-                    const Color(0xFFFF6B00).withOpacity(0.05),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                    );
+                  },
                 ),
               ),
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
             ),
-          ],
-        ),
-      ),
+            borderData: FlBorderData(show: false),
+            lineBarsData: [
+              LineChartBarData(
+                spots: visibleSpots,
+                isCurved: true,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
+                ),
+                barWidth: 3,
+                isStrokeCapRound: true,
+                dotData: FlDotData(
+                  show: true,
+                  getDotPainter: (spot, percent, barData, index) {
+                    // Animate dot size
+                    final dotProgress = Curves.elasticOut.transform(
+                      (((_animation.value * 7) - index) / 7).clamp(0.0, 1.0),
+                    );
+                    return FlDotCirclePainter(
+                      radius: 4 * dotProgress,
+                      color: Colors.white,
+                      strokeWidth: 2,
+                      strokeColor: const Color(0xFFFF6B00),
+                    );
+                  },
+                ),
+                belowBarData: BarAreaData(
+                  show: true,
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFFFF0000).withOpacity(0.2 * _animation.value),
+                      Color(0xFFFF6B00).withOpacity(0.05 * _animation.value),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -545,60 +639,70 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               children: [
                 Expanded(
                   flex: 3,
-                  child: FadeTransition(
-                    opacity: _animation,
-                    child: PieChart(
-                      PieChartData(
-                        sectionsSpace: 2,
-                        centerSpaceRadius: 40,
-                        sections: [
-                          PieChartSectionData(
-                            value: 35,
-                            title: '35%',
-                            color: const Color(0xFFFF0000),
-                            radius: 50,
-                            titleStyle: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                  child: AnimatedBuilder(
+                    animation: _animation,
+                    builder: (context, child) {
+                      return PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 40,
+                          pieTouchData: PieTouchData(
+                            enabled: true,
+                            touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                              // Hover interaction handled by fl_chart
+                            },
                           ),
-                          PieChartSectionData(
-                            value: 25,
-                            title: '25%',
-                            color: const Color(0xFFFF6B00),
-                            radius: 50,
-                            titleStyle: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                          sections: [
+                            PieChartSectionData(
+                              value: 35 * _animation.value,
+                              title: _animation.value > 0.8 ? '35%' : '',
+                              color: const Color(0xFFFF0000),
+                              radius: 50 * Curves.elasticOut.transform(_animation.value),
+                              titleStyle: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                              badgeWidget: _animation.value > 0.9 ? _buildBadge('Tech', Icons.computer) : null,
+                              badgePositionPercentageOffset: 1.3,
                             ),
-                          ),
-                          PieChartSectionData(
-                            value: 20,
-                            title: '20%',
-                            color: Colors.blue.shade400,
-                            radius: 50,
-                            titleStyle: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                            PieChartSectionData(
+                              value: 25 * _animation.value,
+                              title: _animation.value > 0.8 ? '25%' : '',
+                              color: const Color(0xFFFF6B00),
+                              radius: 50 * Curves.elasticOut.transform((_animation.value - 0.1).clamp(0.0, 1.0)),
+                              titleStyle: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                          PieChartSectionData(
-                            value: 20,
-                            title: '20%',
-                            color: Colors.green.shade400,
-                            radius: 50,
-                            titleStyle: GoogleFonts.poppins(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                            PieChartSectionData(
+                              value: 20 * _animation.value,
+                              title: _animation.value > 0.8 ? '20%' : '',
+                              color: Colors.blue.shade400,
+                              radius: 50 * Curves.elasticOut.transform((_animation.value - 0.2).clamp(0.0, 1.0)),
+                              titleStyle: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
+                            PieChartSectionData(
+                              value: 20 * _animation.value,
+                              title: _animation.value > 0.8 ? '20%' : '',
+                              color: Colors.green.shade400,
+                              radius: 50 * Curves.elasticOut.transform((_animation.value - 0.3).clamp(0.0, 1.0)),
+                              titleStyle: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 20),
@@ -619,6 +723,38 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBadge(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFFFF6B00)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
             ),
           ),
         ],
@@ -684,62 +820,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
   }
 
   Widget _buildMetricBar(String label, double value, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-              Text(
-                '${value.toInt()}%',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: value / 100),
-              duration: const Duration(milliseconds: 1500),
-              curve: Curves.easeOut,
-              builder: (context, value, child) {
-                return LinearProgressIndicator(
-                  value: value,
-                  backgroundColor: Colors.grey.shade200,
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                  minHeight: 8,
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
+    return _MetricBarWidget(label: label, value: value, color: color);
   }
 
   Widget _buildTopThumbnails() {
@@ -841,6 +922,103 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           ),
           Icon(icon, color: iconColor, size: 24),
         ],
+      ),
+    );
+  }
+}
+
+class _MetricBarWidget extends StatefulWidget {
+  final String label;
+  final double value;
+  final Color color;
+
+  const _MetricBarWidget({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  State<_MetricBarWidget> createState() => _MetricBarWidgetState();
+}
+
+class _MetricBarWidgetState extends State<_MetricBarWidget> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: AnimatedScale(
+        scale: _isHovering ? 1.02 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: _isHovering 
+                    ? widget.color.withOpacity(0.2)
+                    : Colors.black.withOpacity(0.05),
+                blurRadius: _isHovering ? 15 : 10,
+                offset: Offset(0, _isHovering ? 4 : 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    widget.label,
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: Colors.grey.shade700,
+                      fontWeight: _isHovering ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: GoogleFonts.poppins(
+                      fontSize: _isHovering ? 15 : 13,
+                      fontWeight: FontWeight.w600,
+                      color: _isHovering ? widget.color : Colors.black,
+                    ),
+                    child: Text('${widget.value.toInt()}%'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: widget.value / 100),
+                  duration: const Duration(milliseconds: 1500),
+                  curve: Curves.easeOut,
+                  builder: (context, value, child) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: _isHovering ? 10 : 8,
+                      child: LinearProgressIndicator(
+                        value: value,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(widget.color),
+                        minHeight: _isHovering ? 10 : 8,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

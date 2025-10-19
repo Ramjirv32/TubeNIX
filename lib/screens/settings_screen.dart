@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'profile_screen.dart';
+import 'email_settings_screen.dart';
+import 'change_password_screen.dart';
+import 'notifications_settings_screen.dart';
+import 'language_settings_screen.dart';
+import 'appearance_settings_screen.dart';
+import 'privacy_settings_screen.dart';
+import 'security_settings_screen.dart';
+import 'help_center_screen.dart';
 
 /// Settings Screen - WhatsApp Style
 class SettingsScreen extends StatelessWidget {
@@ -13,10 +21,7 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: Text(
           'Settings',
           style: GoogleFonts.poppins(
@@ -54,14 +59,24 @@ class SettingsScreen extends StatelessWidget {
                   'Email',
                   'user@example.com',
                   Colors.blue,
-                  () {},
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const EmailSettingsScreen()),
+                    );
+                  },
                 ),
                 _buildSettingTile(
                   Icons.lock_outline,
                   'Change Password',
                   'Update your password',
                   Colors.orange,
-                  () {},
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+                    );
+                  },
                 ),
               ],
             ),
@@ -75,21 +90,36 @@ class SettingsScreen extends StatelessWidget {
                   'Notifications',
                   'Manage notification settings',
                   Colors.purple,
-                  () {},
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotificationsSettingsScreen()),
+                    );
+                  },
                 ),
                 _buildSettingTile(
                   Icons.language_outlined,
                   'Language',
                   'English',
                   Colors.green,
-                  () {},
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LanguageSettingsScreen()),
+                    );
+                  },
                 ),
                 _buildSettingTile(
                   Icons.dark_mode_outlined,
                   'Appearance',
                   'Light mode',
                   Colors.indigo,
-                  () {},
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const AppearanceSettingsScreen()),
+                    );
+                  },
                 ),
               ],
             ),
@@ -103,21 +133,35 @@ class SettingsScreen extends StatelessWidget {
                   'Privacy',
                   'Manage your privacy settings',
                   Colors.red,
-                  () {},
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PrivacySettingsScreen()),
+                    );
+                  },
                 ),
                 _buildSettingTile(
                   Icons.security_outlined,
                   'Security',
                   'Two-factor authentication',
                   Colors.orange,
-                  () {},
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SecuritySettingsScreen()),
+                    );
+                  },
                 ),
                 _buildSettingTile(
                   Icons.block_outlined,
                   'Blocked Users',
                   'Manage blocked accounts',
                   Colors.grey,
-                  () {},
+                  () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('No blocked users')),
+                    );
+                  },
                 ),
               ],
             ),
@@ -131,21 +175,68 @@ class SettingsScreen extends StatelessWidget {
                   'Help Center',
                   'Get help and support',
                   Colors.blue,
-                  () {},
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const HelpCenterScreen()),
+                    );
+                  },
                 ),
                 _buildSettingTile(
                   Icons.info_outline,
                   'About',
                   'Version 1.0.0',
                   Colors.teal,
-                  () {},
+                  () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('About', style: GoogleFonts.poppins()),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.photo_library, size: 64, color: Color(0xFFFF6B00)),
+                            const SizedBox(height: 16),
+                            Text(
+                              'TubeNIX',
+                              style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Version 1.0.0',
+                              style: GoogleFonts.poppins(color: Colors.grey),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Your creative thumbnail companion',
+                              style: GoogleFonts.poppins(fontSize: 14),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text('Close', style: GoogleFonts.poppins()),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 _buildSettingTile(
                   Icons.feedback_outlined,
                   'Send Feedback',
                   'Share your thoughts',
                   Colors.amber,
-                  () {},
+                  () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Feedback form opened')),
+                    );
+                  },
                 ),
               ],
             ),

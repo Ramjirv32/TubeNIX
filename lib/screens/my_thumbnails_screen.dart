@@ -2,13 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
+
+
+
 /// Enhanced My Thumbnails Screen with Grid/List View and Filters
+
 class MyThumbnailsScreen extends StatefulWidget {
   const MyThumbnailsScreen({super.key});
 
   @override
   State<MyThumbnailsScreen> createState() => _MyThumbnailsScreenState();
 }
+
+
 
 class _MyThumbnailsScreenState extends State<MyThumbnailsScreen> {
   bool _isGridView = true;
@@ -18,6 +24,7 @@ class _MyThumbnailsScreenState extends State<MyThumbnailsScreen> {
   final List<Map<String, dynamic>> _thumbnails = [
     {
       'title': 'AI Revolution 2025',
+      'description': 'Exploring the latest AI technologies and innovations',
       'category': 'Tech',
       'views': '15.2K',
       'likes': '2.1K',
@@ -26,6 +33,7 @@ class _MyThumbnailsScreenState extends State<MyThumbnailsScreen> {
     },
     {
       'title': 'Gaming Highlights',
+      'description': 'Best moments from recent gaming sessions',
       'category': 'Gaming',
       'views': '12.8K',
       'likes': '1.8K',
@@ -34,6 +42,7 @@ class _MyThumbnailsScreenState extends State<MyThumbnailsScreen> {
     },
     {
       'title': 'Music Festival 2025',
+      'description': 'Live performances from the biggest music festival',
       'category': 'Music',
       'views': '10.5K',
       'likes': '1.5K',
@@ -42,6 +51,7 @@ class _MyThumbnailsScreenState extends State<MyThumbnailsScreen> {
     },
     {
       'title': 'Coding Tutorial',
+      'description': 'Step-by-step guide to modern web development',
       'category': 'Tech',
       'views': '8.3K',
       'likes': '1.2K',
@@ -50,6 +60,7 @@ class _MyThumbnailsScreenState extends State<MyThumbnailsScreen> {
     },
     {
       'title': 'Fortnite Gameplay',
+      'description': 'Epic wins and strategies for competitive play',
       'category': 'Gaming',
       'views': '9.7K',
       'likes': '1.4K',
@@ -58,6 +69,7 @@ class _MyThumbnailsScreenState extends State<MyThumbnailsScreen> {
     },
     {
       'title': 'Top Songs 2025',
+      'description': 'The most popular songs of the year',
       'category': 'Music',
       'views': '11.2K',
       'likes': '1.6K',
@@ -91,10 +103,7 @@ class _MyThumbnailsScreenState extends State<MyThumbnailsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: Text(
           'My Thumbnails',
           style: GoogleFonts.poppins(
@@ -344,6 +353,16 @@ class _MyThumbnailsScreenState extends State<MyThumbnailsScreen> {
                         fontWeight: FontWeight.w600,
                         color: Colors.black,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      thumbnail['description'],
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -477,6 +496,16 @@ class _MyThumbnailsScreenState extends State<MyThumbnailsScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
+                  Text(
+                    thumbnail['description'],
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       Container(

@@ -17,21 +17,37 @@ class NewDashboardScreen extends StatefulWidget {
   State<NewDashboardScreen> createState() => _NewDashboardScreenState();
 }
 
-class _NewDashboardScreenState extends State<NewDashboardScreen> {
+class _NewDashboardScreenState extends State<NewDashboardScreen> 
+    with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   List<TrendingThumbnail> _trendingThumbnails = [];
   String _sortBy = 'views'; // views, likes, saves, downloads
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  late AnimationController _chartAnimationController;
+  late Animation<double> _chartAnimation;
+  bool _isGenerating = false;
 
   @override
   void initState() {
     super.initState();
+    _chartAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+    _chartAnimation = CurvedAnimation(
+      parent: _chartAnimationController,
+      curve: Curves.easeOutCubic,
+    );
     _loadTrendingThumbnails();
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.toLowerCase();
       });
+    });
+    // Start chart animation
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _chartAnimationController.forward();
     });
   }
 
@@ -116,17 +132,39 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> {
           ? _buildHomeContent()
           : _buildOtherScreens(),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
+        onPressed: _isGenerating ? null : () async {
+          setState(() {
+            _isGenerating = true;
+          });
+          
+          // Simulate generation process
+          await Future.delayed(const Duration(seconds: 2));
+          
+          if (!mounted) return;
+          
+          setState(() {
+            _isGenerating = false;
+          });
+          
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const AIChatScreen()),
           );
         },
-        backgroundColor: const Color(0xFFFF0000),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Generate',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        backgroundColor: _isGenerating ? Colors.grey : const Color(0xFFFF0000),
+        icon: _isGenerating 
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          _isGenerating ? 'Generating...' : 'Generate',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
@@ -421,73 +459,108 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> {
   Widget _buildBarChart() {
     final topThumbnails = _trendingThumbnails.take(5).toList();
     
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: topThumbnails.map((t) => t.views.toDouble()).reduce((a, b) => a > b ? a : b) * 1.2,
-        barTouchData: BarTouchData(enabled: true),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                if (value.toInt() < topThumbnails.length) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      topThumbnails[value.toInt()].creatorAvatar,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+    return AnimatedBuilder(
+      animation: _chartAnimation,
+      builder: (context, child) {
+        return BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            maxY: topThumbnails.map((t) => t.views.toDouble()).reduce((a, b) => a > b ? a : b) * 1.2,
+            barTouchData: BarTouchData(
+              enabled: true,
+              touchTooltipData: BarTouchTooltipData(
+                tooltipBgColor: Colors.black87,
+                tooltipRoundedRadius: 8,
+                tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  return BarTooltipItem(
+                    '${topThumbnails[groupIndex].creatorName}\n${(rod.toY / 1000).toStringAsFixed(1)}K views',
+                    const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
                   );
-                }
-                return const Text('');
-              },
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 40,
-              getTitlesWidget: (value, meta) {
-                return Text(
-                  '${(value / 1000).toStringAsFixed(0)}k',
-                  style: const TextStyle(fontSize: 10),
-                );
-              },
-            ),
-          ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: 5000,
-          getDrawingHorizontalLine: (value) => FlLine(
-            color: Colors.grey[300]!,
-            strokeWidth: 1,
-          ),
-        ),
-        borderData: FlBorderData(show: false),
-        barGroups: List.generate(topThumbnails.length, (index) {
-          return BarChartGroupData(
-            x: index,
-            barRods: [
-              BarChartRodData(
-                toY: topThumbnails[index].views.toDouble(),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-                width: 20,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                },
               ),
-            ],
-          );
-        }),
-      ),
+              handleBuiltInTouches: true,
+              touchCallback: (FlTouchEvent event, barTouchResponse) {
+                // Add haptic feedback or additional interactions here if needed
+              },
+            ),
+            titlesData: FlTitlesData(
+              show: true,
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  getTitlesWidget: (value, meta) {
+                    if (value.toInt() < topThumbnails.length) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          topThumbnails[value.toInt()].creatorAvatar,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      );
+                    }
+                    return const Text('');
+                  },
+                ),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40,
+                  getTitlesWidget: (value, meta) {
+                    return Text(
+                      '${(value / 1000).toStringAsFixed(0)}k',
+                      style: const TextStyle(fontSize: 10),
+                    );
+                  },
+                ),
+              ),
+              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ),
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              horizontalInterval: 5000,
+              getDrawingHorizontalLine: (value) => FlLine(
+                color: Colors.grey[300]!,
+                strokeWidth: 1,
+              ),
+            ),
+            borderData: FlBorderData(show: false),
+            barGroups: List.generate(topThumbnails.length, (index) {
+              // Stagger the animation for each bar
+              final delay = index * 0.1;
+              final barProgress = Curves.easeOutBack.transform(
+                (((_chartAnimation.value - delay) / (1 - delay)).clamp(0.0, 1.0))
+              );
+              
+              return BarChartGroupData(
+                x: index,
+                barRods: [
+                  BarChartRodData(
+                    toY: topThumbnails[index].views.toDouble() * barProgress,
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFFFF0000).withOpacity(0.8),
+                        const Color(0xFFFF6B00),
+                      ],
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                    ),
+                    width: 20,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                  ),
+                ],
+              );
+            }),
+          ),
+        );
+      },
     );
   }
 
@@ -558,6 +631,7 @@ class _NewDashboardScreenState extends State<NewDashboardScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _chartAnimationController.dispose();
     super.dispose();
   }
 }
