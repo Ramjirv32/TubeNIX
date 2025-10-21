@@ -19,6 +19,9 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.user;
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -38,7 +41,7 @@ class SettingsScreen extends StatelessWidget {
         child: Column(
           children: [
             // Profile Section
-            _buildProfileSection(context),
+            _buildProfileSection(context, user),
             const SizedBox(height: 20),
             
             // Settings Groups
@@ -60,7 +63,7 @@ class SettingsScreen extends StatelessWidget {
                 _buildSettingTile(
                   Icons.email_outlined,
                   'Email',
-                  'user@example.com',
+                  user?.email ?? 'Not logged in',
                   Colors.blue,
                   () {
                     Navigator.push(
@@ -254,7 +257,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileSection(BuildContext context) {
+  Widget _buildProfileSection(BuildContext context, user) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -295,11 +298,27 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 35,
-              ),
+              child: user?.profilePicture != null
+                  ? ClipOval(
+                      child: Image.network(
+                        user!.profilePicture!,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 35,
+                          );
+                        },
+                      ),
+                    )
+                  : const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 35,
+                    ),
             ),
             const SizedBox(width: 16),
             
@@ -309,7 +328,7 @@ class SettingsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'John Doe',
+                    user?.name ?? 'User',
                     style: GoogleFonts.poppins(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -318,29 +337,49 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Content Creator',
+                    user?.email ?? 'Not logged in',
                     style: GoogleFonts.poppins(
                       fontSize: 13,
                       color: Colors.grey.shade600,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          user?.isEmailVerified == true ? 'Verified ✓' : 'Unverified',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Pro Member',
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          user?.role ?? 'User',
+                          style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),

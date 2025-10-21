@@ -247,6 +247,100 @@ class AuthService {
     }
   }
 
+  /// Change Password
+  Future<AuthResponse> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final token = await getToken();
+
+      if (token == null) {
+        return AuthResponse(
+          success: false,
+          message: 'No token found. Please login.',
+        );
+      }
+
+      print('🔐 Changing password...');
+      
+      final response = await http.put(
+        Uri.parse(ApiConfig.changePassword),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        }),
+      ).timeout(ApiConfig.connectionTimeout);
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+      return AuthResponse.fromJson(data);
+    } catch (e) {
+      print('❌ Change password error: $e');
+      return AuthResponse(
+        success: false,
+        message: 'Connection error: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Update Profile
+  Future<AuthResponse> updateProfile({
+    String? name,
+    String? profilePicture,
+  }) async {
+    try {
+      final token = await getToken();
+
+      if (token == null) {
+        return AuthResponse(
+          success: false,
+          message: 'No token found. Please login.',
+        );
+      }
+
+      print('👤 Updating profile...');
+
+      final body = <String, dynamic>{};
+      if (name != null) body['name'] = name;
+      if (profilePicture != null) body['profilePicture'] = profilePicture;
+      
+      final response = await http.put(
+        Uri.parse(ApiConfig.updateProfile),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(body),
+      ).timeout(ApiConfig.connectionTimeout);
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+      final authResponse = AuthResponse.fromJson(data);
+
+      // Update saved user data if successful
+      if (authResponse.success && authResponse.data != null) {
+        await _saveUser(authResponse.data!.user);
+      }
+
+      return authResponse;
+    } catch (e) {
+      print('❌ Update profile error: $e');
+      return AuthResponse(
+        success: false,
+        message: 'Connection error: ${e.toString()}',
+      );
+    }
+  }
+
   /// Save token to local storage
   Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
