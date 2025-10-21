@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import 'login_screen.dart';
+import 'new_dashboard_screen.dart';
+import '../providers/auth_provider.dart';
 
 /// Splash Screen with TubeNix logo and loading animation
 /// Auto-navigates to Login screen after 3 seconds
@@ -37,14 +40,29 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animationController.forward();
 
-    // Navigate to Login screen after 3 seconds
-    Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      }
-    });
+    // Check authentication and navigate accordingly
+    _checkAuthAndNavigate();
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    await Future.delayed(const Duration(seconds: 3));
+
+    if (!mounted) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // Check if user is already logged in
+    if (authProvider.isAuthenticated) {
+      // Navigate to dashboard if logged in
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const NewDashboardScreen()),
+      );
+    } else {
+      // Navigate to login screen if not logged in
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    }
   }
 
   @override

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
+import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'email_settings_screen.dart';
 import 'change_password_screen.dart';
@@ -476,9 +479,42 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      Navigator.pop(context); // Close dialog
+
+                      // Show loading
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFFF6B00),
+                          ),
+                        ),
+                      );
+
+                      // Perform logout
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      await authProvider.logout();
+
+                      if (!context.mounted) return;
+
+                      // Close loading dialog
                       Navigator.pop(context);
-                      Navigator.pop(context);
+
+                      // Navigate to login screen
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        (route) => false,
+                      );
+
+                      // Show success message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Logged out successfully'),
+                          backgroundColor: Color(0xFFFF6B00),
+                        ),
+                      );
                     },
                     child: Text(
                       'Logout',

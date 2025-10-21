@@ -1,18 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'screens/splash_screen.dart';
 import 'providers/thumbnail_provider.dart';
+import 'providers/auth_provider.dart';
+import 'config/firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final provider = ThumbnailProvider();
-  await provider.init();
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  final thumbnailProvider = ThumbnailProvider();
+  await thumbnailProvider.init();
+
+  final authProvider = AuthProvider();
+  await authProvider.init();
 
   runApp(
-    ChangeNotifierProvider.value(
-      value: provider,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: thumbnailProvider),
+        ChangeNotifierProvider.value(value: authProvider),
+      ],
       child: const TubeNixApp(),
     ),
   );
