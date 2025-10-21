@@ -157,6 +157,73 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Change Password
+  Future<AuthResponse> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _authService.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+
+      if (!response.success) {
+        _errorMessage = response.message;
+      }
+
+      return response;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return AuthResponse(
+        success: false,
+        message: e.toString(),
+      );
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Update Profile
+  Future<AuthResponse> updateProfile({
+    String? name,
+    String? profilePicture,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _authService.updateProfile(
+        name: name,
+        profilePicture: profilePicture,
+      );
+
+      if (response.success && response.data != null) {
+        _user = response.data!.user;
+        _errorMessage = null;
+      } else {
+        _errorMessage = response.message;
+      }
+
+      return response;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return AuthResponse(
+        success: false,
+        message: e.toString(),
+      );
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Clear error message
   void clearError() {
     _errorMessage = null;

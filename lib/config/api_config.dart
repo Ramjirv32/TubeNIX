@@ -16,6 +16,8 @@ class ApiConfig {
   static const String googleAuth = '$baseUrl/auth/google';
   static const String getMe = '$baseUrl/auth/me';
   static const String logout = '$baseUrl/auth/logout';
+  static const String changePassword = '$baseUrl/auth/change-password';
+  static const String updateProfile = '$baseUrl/auth/profile';
   
   // Timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);
