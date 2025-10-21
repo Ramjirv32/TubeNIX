@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../screens/new_dashboard_screen.dart';
 import '../screens/forgot_password_screen.dart';
+import '../providers/auth_provider.dart';
 
 /// Login/Signup Screen with enhanced UI
 class LoginScreen extends StatefulWidget {
@@ -52,29 +54,92 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _handleLogin() async {
     if (_loginFormKey.currentState!.validate()) {
+      print('📝 Login form validated');
+      print('📧 Email: ${_loginEmailController.text.trim()}');
+      print('🔒 Password length: ${_loginPasswordController.text.length}');
+      
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(seconds: 1));
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      print('🚀 Calling login API...');
+      final response = await authProvider.login(
+        email: _loginEmailController.text.trim(),
+        password: _loginPasswordController.text,
+      );
+
       setState(() => _isLoading = false);
 
-      if (mounted) {
+      if (!mounted) return;
+
+      print('📬 Response received: ${response.success}');
+      print('💬 Message: ${response.message}');
+
+      if (response.success) {
+        // Navigate to dashboard on success
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const NewDashboardScreen()),
         );
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: const Color(0xFFFF6B00),
+          ),
+        );
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
+    } else {
+      print('❌ Login form validation failed');
     }
   }
 
   void _handleSignup() async {
     if (_signupFormKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(seconds: 1));
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      final response = await authProvider.signUp(
+        name: _signupNameController.text.trim(),
+        email: _signupEmailController.text.trim(),
+        password: _signupPasswordController.text,
+      );
+
       setState(() => _isLoading = false);
 
-      if (mounted) {
+      if (!mounted) return;
+
+      if (response.success) {
+        // Navigate to dashboard on success
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const NewDashboardScreen()),
+        );
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Welcome ${_signupNameController.text}! ${response.message}'),
+            backgroundColor: const Color(0xFFFF6B00),
+          ),
+        );
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -82,13 +147,40 @@ class _LoginScreenState extends State<LoginScreen>
 
   void _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    print('🔐 Starting Google Sign-In flow...');
+    final response = await authProvider.signInWithGoogle();
+
     setState(() => _isLoading = false);
-    
-    if (mounted) {
+
+    if (!mounted) return;
+
+    print('📬 Google Sign-In response: ${response.success}');
+    print('💬 Message: ${response.message}');
+
+    if (response.success) {
+      // Navigate to dashboard on success
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const NewDashboardScreen()),
+      );
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Welcome! ${response.message}'),
+          backgroundColor: const Color(0xFFFF6B00),
+        ),
+      );
+    } else {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response.message),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
