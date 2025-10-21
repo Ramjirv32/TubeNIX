@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../config/api_config.dart';
 import '../models/auth_response.dart';
 
@@ -108,6 +109,14 @@ class AuthService {
   Future<AuthResponse> signInWithGoogle() async {
     try {
       print('🔐 Starting Google Sign-In...');
+
+      // Check if Firebase is initialized
+      try {
+        await Firebase.initializeApp();
+      } catch (e) {
+        // Firebase already initialized or not available
+        print('📝 Firebase check: $e');
+      }
 
       // Trigger Google Sign-In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();

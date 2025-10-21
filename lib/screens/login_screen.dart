@@ -146,6 +146,17 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _handleGoogleSignIn() async {
+    // Show message that Google Sign-In is not available on Linux
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Google Sign-In is not available on Linux Desktop.\nPlease use Email/Password login or run on Android/iOS.'),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 4),
+      ),
+    );
+    
+    // Uncomment below for Android/iOS/Web platforms
+    /*
     setState(() => _isLoading = true);
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -183,6 +194,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
       );
     }
+    */
   }
 
   @override
