@@ -6,7 +6,10 @@ import {
   getMe,
   logout,
   changePassword,
-  updateProfile
+  updateProfile,
+  updateEmail,
+  updateSettings,
+  getSettings
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -22,5 +25,8 @@ router.get('/me', protect, getMe);
 router.post('/logout', protect, logout);
 router.put('/change-password', protect, changePassword);
 router.put('/profile', protect, updateProfile);
+router.put('/email', protect, updateEmail);
+router.put('/settings', protect, updateSettings);
+router.get('/settings', protect, getSettings);
 
 export default router;

@@ -396,4 +396,131 @@ class AuthService {
     final token = await getToken();
     return token != null && token.isNotEmpty;
   }
+
+  /// Update Email
+  Future<AuthResponse> updateEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final token = await getToken();
+
+      if (token == null) {
+        return AuthResponse(
+          success: false,
+          message: 'No token found. Please login.',
+        );
+      }
+
+      print('📧 Updating email...');
+      
+      final response = await http.put(
+        Uri.parse(ApiConfig.updateEmail),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      ).timeout(ApiConfig.connectionTimeout);
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+      final authResponse = AuthResponse.fromJson(data);
+
+      // Update saved user data if successful
+      if (authResponse.success && authResponse.data != null) {
+        await _saveUser(authResponse.data!.user);
+      }
+
+      return authResponse;
+    } catch (e) {
+      print('❌ Update email error: $e');
+      return AuthResponse(
+        success: false,
+        message: 'Connection error: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Update Settings
+  Future<Map<String, dynamic>> updateSettings({
+    required String settingsType,
+    required Map<String, dynamic> settings,
+  }) async {
+    try {
+      final token = await getToken();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No token found. Please login.',
+        };
+      }
+
+      print('⚙️ Updating $settingsType settings...');
+      
+      final response = await http.put(
+        Uri.parse(ApiConfig.updateSettings),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'settingsType': settingsType,
+          'settings': settings,
+        }),
+      ).timeout(ApiConfig.connectionTimeout);
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      print('❌ Update settings error: $e');
+      return {
+        'success': false,
+        'message': 'Connection error: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Get Settings
+  Future<Map<String, dynamic>> getSettings() async {
+    try {
+      final token = await getToken();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No token found. Please login.',
+        };
+      }
+
+      print('⚙️ Getting settings...');
+      
+      final response = await http.get(
+        Uri.parse(ApiConfig.getSettings),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(ApiConfig.connectionTimeout);
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
+
+      return jsonDecode(response.body);
+    } catch (e) {
+      print('❌ Get settings error: $e');
+      return {
+        'success': false,
+        'message': 'Connection error: ${e.toString()}',
+      };
+    }
+  }
 }

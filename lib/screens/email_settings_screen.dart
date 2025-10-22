@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 /// Email Settings Screen - Manage email preferences
 class EmailSettingsScreen extends StatefulWidget {
@@ -10,16 +12,116 @@ class EmailSettingsScreen extends StatefulWidget {
 }
 
 class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
-  final TextEditingController _emailController = TextEditingController(text: 'user@example.com');
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _emailNotifications = true;
   bool _marketingEmails = false;
   bool _weeklyDigest = true;
   bool _isUpdatingEmail = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      if (authProvider.user != null) {
+        _emailController.text = authProvider.user!.email;
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _updateEmail() async {
+    final newEmail = _emailController.text.trim();
+
+    if (newEmail.isEmpty || !newEmail.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid email'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final password = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Confirm Password',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+        ),
+        content: TextField(
+          controller: _passwordController,
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: 'Current Password',
+            labelStyle: GoogleFonts.poppins(),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.poppins()),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context, _passwordController.text);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF6B00),
+            ),
+            child: Text('Confirm', style: GoogleFonts.poppins()),
+          ),
+        ],
+      ),
+    );
+
+    if (password == null || password.isEmpty) return;
+
+    setState(() {
+      _isUpdatingEmail = true;
+    });
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    final response = await authProvider.updateEmail(
+      email: newEmail,
+      password: password,
+    );
+
+    setState(() {
+      _isUpdatingEmail = false;
+    });
+
+    _passwordController.clear();
+
+    if (!mounted) return;
+
+    if (response.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response.message),
+          backgroundColor: const Color(0xFFFF6B00),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response.message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -47,7 +149,6 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Email Address Section
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -92,27 +193,7 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _isUpdatingEmail ? null : () async {
-                        setState(() {
-                          _isUpdatingEmail = true;
-                        });
-
-                        // Simulate email update process
-                        await Future.delayed(const Duration(seconds: 2));
-
-                        if (!mounted) return;
-
-                        setState(() {
-                          _isUpdatingEmail = false;
-                        });
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Verification email sent!'),
-                            backgroundColor: Color(0xFFFF6B00),
-                          ),
-                        );
-                      },
+                      onPressed: _isUpdatingEmail ? null : _updateEmail,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isUpdatingEmail ? Colors.grey : const Color(0xFFFF6B00),
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -144,7 +225,6 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
             ),
             const SizedBox(height: 20),
             
-            // Email Preferences Section
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -198,7 +278,6 @@ class _EmailSettingsScreenState extends State<EmailSettingsScreen> {
             ),
             const SizedBox(height: 20),
             
-            // Verified Badge
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(

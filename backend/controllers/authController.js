@@ -326,3 +326,107 @@ export const updateProfile = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @desc    Update user email
+ * @route   PUT /api/auth/email
+ * @access  Private
+ */
+export const updateEmail = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email and password'
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    // Verify password for security
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Password is incorrect'
+      });
+    }
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser && existingUser._id.toString() !== req.user.id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already in use'
+      });
+    }
+
+    user.email = email;
+    user.isEmailVerified = false; // Reset verification status
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Email updated successfully',
+      data: {
+        user: user.getPublicProfile()
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update user settings
+ * @route   PUT /api/auth/settings
+ * @access  Private
+ */
+export const updateSettings = async (req, res, next) => {
+  try {
+    const { settingsType, settings } = req.body;
+
+    const user = await User.findById(req.user.id);
+    
+    if (!user.settings) {
+      user.settings = {};
+    }
+
+    // Update specific settings type
+    user.settings[settingsType] = settings;
+    user.markModified('settings');
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: `${settingsType} settings updated successfully`,
+      data: {
+        settings: user.settings
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get user settings
+ * @route   GET /api/auth/settings
+ * @access  Private
+ */
+export const getSettings = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        settings: user.settings || {}
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
