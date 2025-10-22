@@ -18,6 +18,9 @@ class ApiConfig {
   static const String logout = '$baseUrl/auth/logout';
   static const String changePassword = '$baseUrl/auth/change-password';
   static const String updateProfile = '$baseUrl/auth/profile';
+  static const String updateEmail = '$baseUrl/auth/email';
+  static const String updateSettings = '$baseUrl/auth/settings';
+  static const String getSettings = '$baseUrl/auth/settings';
   
   // Timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);

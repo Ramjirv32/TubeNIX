@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 /// Profile Screen with Stats and Achievements
 class ProfileScreen extends StatefulWidget {
@@ -14,6 +16,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _animation;
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _bioController = TextEditingController();
 
   @override
   void initState() {
@@ -32,11 +36,26 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    _nameController.dispose();
+    _bioController.dispose();
     super.dispose();
+  }
+
+  String _getDisplayName(String? name, String? email) {
+    if (name != null && name.isNotEmpty) {
+      return name;
+    }
+    if (email != null && email.contains('@')) {
+      return email.split('@')[0];
+    }
+    return 'User';
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.user;
+    final displayName = _getDisplayName(user?.name, user?.email);
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       body: CustomScrollView(
@@ -106,7 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       
                       // Name
                       Text(
-                        'John Doe',
+                        displayName,
                         style: GoogleFonts.poppins(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -117,7 +136,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       
                       // Bio
                       Text(
-                        'Content Creator & Designer',
+                        user?.email ?? 'No email',
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           color: Colors.grey.shade600,
@@ -538,6 +557,11 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showEditProfile() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+    
+    _nameController.text = user?.name ?? '';
+    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -575,7 +599,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               const SizedBox(height: 20),
               TextFormField(
-                initialValue: 'John Doe',
+                controller: _nameController,
                 style: GoogleFonts.poppins(),
                 decoration: InputDecoration(
                   labelText: 'Name',
@@ -585,57 +609,89 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                initialValue: 'Content Creator & Designer',
-                style: GoogleFonts.poppins(),
-                decoration: InputDecoration(
-                  labelText: 'Bio',
-                  labelStyle: GoogleFonts.poppins(),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
               const SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                height: 50,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Profile updated successfully!',
-                            style: GoogleFonts.poppins(),
-                          ),
-                          backgroundColor: Colors.green,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Center(
-                      child: Text(
-                        'Save Changes',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+              Consumer<AuthProvider>(
+                builder: (context, auth, child) {
+                  return Container(
+                    width: double.infinity,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF0000), Color(0xFFFF6B00)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: auth.isLoading ? null : () async {
+                          final newName = _nameController.text.trim();
+                          
+                          if (newName.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Please enter a name',
+                                  style: GoogleFonts.poppins(),
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          final response = await auth.updateProfile(name: newName);
+                          
+                          Navigator.pop(context);
+                          
+                          if (response.success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Profile updated successfully!',
+                                  style: GoogleFonts.poppins(),
+                                ),
+                                backgroundColor: const Color(0xFFFF6B00),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  response.message,
+                                  style: GoogleFonts.poppins(),
+                                ),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Center(
+                          child: auth.isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(
+                                  'Save Changes',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 20),
             ],

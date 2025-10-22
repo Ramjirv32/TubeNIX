@@ -137,9 +137,10 @@ class TrendingThumbnailCard extends StatelessWidget {
 
           // Content
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(10.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // Title
                 Text(
@@ -152,7 +153,7 @@ class TrendingThumbnailCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
 
                 // Creator
                 Row(
@@ -183,7 +184,7 @@ class TrendingThumbnailCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
 
                 // Engagement Stats
                 Row(
@@ -194,7 +195,7 @@ class TrendingThumbnailCard extends StatelessWidget {
                     _buildStatItem(Icons.download_outlined, _formatNumber(thumbnail.downloads)),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
 
                 // Action Buttons
                 Row(

@@ -224,6 +224,85 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Update Email
+  Future<AuthResponse> updateEmail({
+    required String email,
+    required String password,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _authService.updateEmail(
+        email: email,
+        password: password,
+      );
+
+      if (response.success && response.data != null) {
+        _user = response.data!.user;
+        _errorMessage = null;
+      } else {
+        _errorMessage = response.message;
+      }
+
+      return response;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return AuthResponse(
+        success: false,
+        message: e.toString(),
+      );
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Update Settings
+  Future<Map<String, dynamic>> updateSettings({
+    required String settingsType,
+    required Map<String, dynamic> settings,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _authService.updateSettings(
+        settingsType: settingsType,
+        settings: settings,
+      );
+
+      if (response['success'] != true) {
+        _errorMessage = response['message'];
+      }
+
+      return response;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return {
+        'success': false,
+        'message': e.toString(),
+      };
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Get Settings
+  Future<Map<String, dynamic>> getSettings() async {
+    try {
+      return await _authService.getSettings();
+    } catch (e) {
+      return {
+        'success': false,
+        'message': e.toString(),
+      };
+    }
+  }
+
   /// Clear error message
   void clearError() {
     _errorMessage = null;

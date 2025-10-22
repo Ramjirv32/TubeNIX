@@ -57,6 +57,28 @@ const userSchema = new mongoose.Schema(
     lastLogin: {
       type: Date,
       default: Date.now
+    },
+    settings: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {
+        notifications: {
+          emailNotifications: true,
+          pushNotifications: true,
+          trendingVideos: true,
+          newFeatures: true
+        },
+        language: 'English',
+        appearance: 'light',
+        privacy: {
+          profileVisibility: 'public',
+          showEmail: false,
+          showActivity: true
+        },
+        security: {
+          twoFactorEnabled: false,
+          loginAlerts: true
+        }
+      }
     }
   },
   {
