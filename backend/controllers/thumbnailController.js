@@ -1,0 +1,415 @@
+import geminiService from '../services/geminiService.js';
+import UserThumbnail from '../models/UserThumbnail.js';
+import Collection from '../models/Collection.js';
+import fs from 'fs';
+import path from 'path';
+
+export const generateThumbnail = async (req, res, next) => {
+  try {
+    const { prompt, saveToCollection = false, makePublic = false } = req.body;
+    
+    // Check if user is authenticated
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required. Please log in first.'
+      });
+    }
+    
+    const userId = req.user.id;
+    const userEmail = req.user.email;
+
+    if (!prompt || prompt.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Prompt is required'
+      });
+    }
+
+    if (!geminiService.isPromptSafe(prompt)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Prompt contains inappropriate content'
+      });
+    }
+
+    console.log(`Generating thumbnail for user ${userEmail}: ${prompt}`);
+
+    const result = await geminiService.generateThumbnail(prompt);
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.message
+      });
+    }
+
+    // Save to UserThumbnail collection
+    const userThumbnail = new UserThumbnail({
+      userEmail,
+      userId,
+      prompt: result.data.prompt,
+      originalPrompt: result.data.originalPrompt,
+      base64Image: result.data.base64,
+      imageSize: result.data.size,
+      textResponse: result.data.textResponse,
+      isPublic: makePublic,
+      metadata: {
+        model: 'gemini-2.5-flash-image',
+        generatedAt: new Date(result.data.generatedAt),
+      }
+    });
+
+    await userThumbnail.save();
+
+    // Optionally save to Collections as well
+    if (saveToCollection) {
+      const collection = new Collection({
+        user: userId,
+        title: `AI Generated: ${result.data.originalPrompt}`,
+        description: `Generated using Gemini AI: ${result.data.prompt}`,
+        imageUrl: `data:image/png;base64,${result.data.base64}`,
+        base64Image: result.data.base64,
+        source: 'ai-generated',
+        type: 'ai-thumbnail',
+        isPublic: makePublic,
+        metadata: {
+          aiModel: 'gemini-2.5-flash-image',
+          originalPrompt: result.data.originalPrompt,
+          enhancedPrompt: result.data.prompt,
+          generatedAt: result.data.generatedAt,
+        }
+      });
+
+      await collection.save();
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Thumbnail generated successfully',
+      data: {
+        id: userThumbnail._id,
+        base64: result.data.base64,
+        prompt: result.data.originalPrompt,
+        enhancedPrompt: result.data.prompt,
+        size: result.data.size,
+        isPublic: makePublic,
+        savedToCollection: saveToCollection,
+        createdAt: userThumbnail.createdAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Generate thumbnail error:', error);
+    next(error);
+  }
+};
+
+export const generateMultipleThumbnails = async (req, res, next) => {
+  try {
+    const { prompt, count = 3, saveToCollection = false, makePublic = false } = req.body;
+    const userId = req.user.id;
+    const userEmail = req.user.email;
+
+    if (!prompt || prompt.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Prompt is required'
+      });
+    }
+
+    if (!geminiService.isPromptSafe(prompt)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Prompt contains inappropriate content'
+      });
+    }
+
+    console.log(`Generating ${count} thumbnails for user ${userEmail}: ${prompt}`);
+
+    const result = await geminiService.generateMultipleThumbnails(prompt, Math.min(count, 5));
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.message
+      });
+    }
+
+    const savedThumbnails = [];
+
+    for (const thumbnail of result.data) {
+      const userThumbnail = new UserThumbnail({
+        userEmail,
+        userId,
+        prompt: thumbnail.prompt,
+        originalPrompt: thumbnail.originalPrompt,
+        base64Image: thumbnail.base64,
+        imageSize: thumbnail.size,
+        textResponse: thumbnail.textResponse,
+        isPublic: makePublic,
+        metadata: {
+          model: 'gemini-2.5-flash-image',
+          generatedAt: new Date(thumbnail.generatedAt),
+          variation: thumbnail.variation,
+        }
+      });
+
+      await userThumbnail.save();
+      savedThumbnails.push({
+        id: userThumbnail._id,
+        base64: thumbnail.base64,
+        size: thumbnail.size,
+        variation: thumbnail.variation,
+      });
+
+      // Save to collection if requested
+      if (saveToCollection) {
+        const collection = new Collection({
+          user: userId,
+          title: `AI Generated V${thumbnail.variation}: ${thumbnail.originalPrompt}`,
+          description: `Generated using Gemini AI: ${thumbnail.prompt}`,
+          imageUrl: `data:image/png;base64,${thumbnail.base64}`,
+          base64Image: thumbnail.base64,
+          source: 'ai-generated',
+          type: 'ai-thumbnail',
+          isPublic: makePublic,
+          metadata: {
+            aiModel: 'gemini-2.5-flash-image',
+            originalPrompt: thumbnail.originalPrompt,
+            enhancedPrompt: thumbnail.prompt,
+            generatedAt: thumbnail.generatedAt,
+            variation: thumbnail.variation,
+          }
+        });
+
+        await collection.save();
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Generated ${savedThumbnails.length} thumbnails successfully`,
+      data: {
+        thumbnails: savedThumbnails,
+        prompt: prompt,
+        count: savedThumbnails.length,
+        savedToCollection: saveToCollection,
+        isPublic: makePublic,
+      }
+    });
+
+  } catch (error) {
+    console.error('Generate multiple thumbnails error:', error);
+    next(error);
+  }
+};
+
+export const downloadThumbnail = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const thumbnail = await UserThumbnail.findOne({ 
+      _id: id, 
+      $or: [{ userId }, { isPublic: true }] 
+    });
+
+    if (!thumbnail) {
+      return res.status(404).json({
+        success: false,
+        message: 'Thumbnail not found or access denied'
+      });
+    }
+
+    // Update download count
+    thumbnail.downloadCount += 1;
+    thumbnail.isDownloaded = true;
+    await thumbnail.save();
+
+    const imageBuffer = Buffer.from(thumbnail.base64Image, 'base64');
+    const filename = `tubenix-thumbnail-${id}-${Date.now()}.png`;
+
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': imageBuffer.length,
+    });
+
+    res.send(imageBuffer);
+
+  } catch (error) {
+    console.error('Download thumbnail error:', error);
+    next(error);
+  }
+};
+
+export const getUserThumbnails = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { includePrivate = 'true', page = 1, limit = 20 } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const query = includePrivate === 'true' 
+      ? { userId } 
+      : { userId, isPublic: true };
+
+    const thumbnails = await UserThumbnail.find(query)
+      .select('-base64Image') // Exclude base64 for list view
+      .sort({ createdAt: -1 })
+      .limit(limitNum)
+      .skip(skip);
+
+    const total = await UserThumbnail.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: {
+        thumbnails,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum),
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user thumbnails error:', error);
+    next(error);
+  }
+};
+
+export const getPublicThumbnails = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const thumbnails = await UserThumbnail.getPublicThumbnails(limitNum, skip);
+    const total = await UserThumbnail.countDocuments({ isPublic: true });
+
+    res.json({
+      success: true,
+      data: {
+        thumbnails,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: Math.ceil(total / limitNum),
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get public thumbnails error:', error);
+    next(error);
+  }
+};
+
+export const getThumbnailById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    // Allow access if user owns it or if it's public
+    const query = userId 
+      ? { _id: id, $or: [{ userId }, { isPublic: true }] }
+      : { _id: id, isPublic: true };
+
+    const thumbnail = await UserThumbnail.findOne(query);
+
+    if (!thumbnail) {
+      return res.status(404).json({
+        success: false,
+        message: 'Thumbnail not found or access denied'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: thumbnail
+    });
+
+  } catch (error) {
+    console.error('Get thumbnail by ID error:', error);
+    next(error);
+  }
+};
+
+export const toggleThumbnailPublic = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const thumbnail = await UserThumbnail.findOne({ _id: id, userId });
+
+    if (!thumbnail) {
+      return res.status(404).json({
+        success: false,
+        message: 'Thumbnail not found'
+      });
+    }
+
+    await thumbnail.togglePublic();
+
+    res.json({
+      success: true,
+      message: `Thumbnail is now ${thumbnail.isPublic ? 'public' : 'private'}`,
+      data: {
+        id: thumbnail._id,
+        isPublic: thumbnail.isPublic,
+      }
+    });
+
+  } catch (error) {
+    console.error('Toggle thumbnail public error:', error);
+    next(error);
+  }
+};
+
+// Demo endpoint for testing without authentication
+export const generateThumbnailDemo = async (req, res, next) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt || prompt.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Prompt is required'
+      });
+    }
+
+    console.log(`Demo thumbnail generation for prompt: ${prompt}`);
+
+    // Since Gemini API has quota issues, return a demo response
+    const demoBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='; // 1x1 red pixel
+
+    res.status(201).json({
+      success: true,
+      message: 'Demo thumbnail generated successfully',
+      data: {
+        id: 'demo-' + Date.now(),
+        base64: demoBase64,
+        prompt: prompt,
+        enhancedPrompt: `Enhanced: Create a high quality YouTube thumbnail for: ${prompt}`,
+        size: '1 KB',
+        isPublic: false,
+        savedToCollection: false,
+        createdAt: new Date().toISOString(),
+        note: 'This is a demo response. Actual Gemini API integration requires quota.'
+      }
+    });
+
+  } catch (error) {
+    console.error('Demo thumbnail generation error:', error);
+    next(error);
+  }
+};

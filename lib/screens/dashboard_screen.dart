@@ -5,6 +5,8 @@ import '../widgets/stat_card.dart';
 import '../widgets/thumbnail_card.dart';
 import '../providers/thumbnail_provider.dart';
 import '../models/thumbnail_model.dart';
+import 'thumbnail_generator_screen.dart';
+import 'trending_chat_screen.dart';
 
 /// Dashboard Screen - Main home screen showing statistics and thumbnails
 class DashboardScreen extends StatefulWidget {
@@ -68,10 +70,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
               onPressed: () {
-                _showAddThumbnailDialog();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ThumbnailGeneratorScreen(),
+                  ),
+                );
               },
               backgroundColor: const Color(0xFFFF0000),
-              child: const Icon(Icons.add, color: Colors.white),
+              child: const Icon(Icons.auto_awesome, color: Colors.white),
             )
           : null,
       bottomNavigationBar: _buildBottomNavigationBar(),
@@ -320,46 +327,125 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildOtherContent() {
-    String title = '';
-    IconData icon = Icons.home;
-
     switch (_currentIndex) {
       case 1:
-        title = 'Thumbnails';
-        icon = Icons.image;
-        break;
+        return _buildThumbnailsContent();
       case 2:
-        title = 'Analytics';
-        icon = Icons.analytics;
-        break;
+        return _buildAnalyticsContent();
       case 3:
-        title = 'Profile';
-        icon = Icons.person;
-        break;
+        return _buildProfileContent();
+      default:
+        return const Center(child: Text('Coming Soon'));
     }
+  }
 
+  Widget _buildThumbnailsContent() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 80, color: Colors.grey[700]),
-          const SizedBox(height: 16),
-          Text(
-            '$title Screen',
+          const Icon(Icons.image, size: 80, color: Color(0xFFFF6B35)),
+          const SizedBox(height: 24),
+          const Text(
+            'AI Thumbnail Generator',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.grey[600],
+              color: Colors.black87,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Coming Soon',
+          const SizedBox(height: 12),
+          const Text(
+            'Create stunning YouTube thumbnails with AI',
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[700],
+              color: Colors.grey,
             ),
+            textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 32),
+          
+          // Action Buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ThumbnailGeneratorScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.auto_awesome),
+                label: const Text('Generate Thumbnail'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF6B35),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TrendingChatScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.trending_up),
+                label: const Text('Explore Trends'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey[600],
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsContent() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.analytics, size: 80, color: Colors.blue),
+          SizedBox(height: 16),
+          Text(
+            'Analytics Dashboard',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 8),
+          Text('Coming Soon', style: TextStyle(color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileContent() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person, size: 80, color: Colors.green),
+          SizedBox(height: 16),
+          Text(
+            'Profile Settings',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 8),
+          Text('Coming Soon', style: TextStyle(color: Colors.grey)),
         ],
       ),
     );
