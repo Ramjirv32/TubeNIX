@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../services/serp_service.dart';
-import '../services/collection_service.dart';
-import 'ai_chat_screen.dart';
-import 'thumbnail_generator_screen.dart';
 
 /// Trending Chat Search - Interactive chat-like interface to explore trending content worldwide
 class TrendingChatScreen extends StatefulWidget {
@@ -23,8 +17,6 @@ class _TrendingChatScreenState extends State<TrendingChatScreen>
   final List<ChatMessage> _messages = [];
   bool _isTyping = false;
   late AnimationController _animationController;
-  final SerpService _serpService = SerpService();
-  final CollectionService _collectionService = CollectionService();
 
   @override
   void initState() {
@@ -70,7 +62,7 @@ class _TrendingChatScreenState extends State<TrendingChatScreen>
     });
   }
 
-  void _sendMessage(String text) async {
+  void _sendMessage(String text) {
     if (text.trim().isEmpty) return;
 
     setState(() {
@@ -84,110 +76,51 @@ class _TrendingChatScreenState extends State<TrendingChatScreen>
     _messageController.clear();
     _scrollToBottom();
 
-    // Generate AI response
-    _generateResponse(text);
+    // Simulate bot response
+    setState(() => _isTyping = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        _generateResponse(text.toLowerCase());
+      }
+    });
   }
 
-  Future<void> _generateResponse(String query) async {
+  void _generateResponse(String query) {
     List<TrendingContent> content = [];
     String responseText = '';
 
-    try {
-      List<dynamic> results;
-      
-      if (query.contains('trending') || query.contains('popular') || query.contains('show')) {
-        responseText = 'Here are the top trending YouTube videos right now:';
-        results = await _serpService.getTrendingVideos();
-      } else if (query.contains('image') || query.contains('thumbnail') || query.contains('picture')) {
-        responseText = 'Here are trending thumbnail images:';
-        results = await _serpService.getTrendingImages(query: query);
-        content = results.take(6).map((item) => _toTrendingContent(item)).toList();
-      } else {
-        // Search videos with query
-        responseText = 'I found these videos for "$query":';
-        results = await _serpService.searchVideos(query);
-      }
-      
-      // Convert to TrendingContent if not images
-      if (content.isEmpty && results.isNotEmpty) {
-        content = results.take(6).map((item) => _toTrendingContent(item)).toList();
-      }
-
-      setState(() {
-        _isTyping = false;
-        _messages.add(ChatMessage(
-          text: responseText,
-          isUser: false,
-          timestamp: DateTime.now(),
-          trendingContent: content,
-          suggestions: [
-            'More like this',
-            'Show images',
-            'Different topic',
-          ],
-        ));
-      });
-    } catch (e) {
-      print('Error generating response: $e');
-      setState(() {
-        _isTyping = false;
-        _messages.add(ChatMessage(
-          text: 'Sorry, I encountered an error while fetching content. Please try again.',
-          isUser: false,
-          timestamp: DateTime.now(),
-          suggestions: [
-            'Try again',
-            'Show trending',
-          ],
-        ));
-      });
+    if (query.contains('trending') || query.contains('popular') || query.contains('show')) {
+      responseText = 'Here are the top trending contents right now:';
+      content = _getTrendingContent();
+    } else if (query.contains('tech') || query.contains('technology')) {
+      responseText = 'Top tech content trending worldwide:';
+      content = _getTechContent();
+    } else if (query.contains('game') || query.contains('gaming')) {
+      responseText = 'Popular gaming content:';
+      content = _getGamingContent();
+    } else if (query.contains('music')) {
+      responseText = 'Trending music videos:';
+      content = _getMusicContent();
+    } else {
+      responseText = 'I found some interesting content for you:';
+      content = _getTrendingContent();
     }
-    
+
+    setState(() {
+      _isTyping = false;
+      _messages.add(ChatMessage(
+        text: responseText,
+        isUser: false,
+        timestamp: DateTime.now(),
+        trendingContent: content,
+        suggestions: [
+          'More like this',
+          'Different category',
+          'Top creators',
+        ],
+      ));
+    });
     _scrollToBottom();
-  }
-
-  TrendingContent _toTrendingContent(dynamic item) {
-    // Supports either a Map (from older service) or a SerpItem-like object
-    if (item is Map) {
-      final viewsVal = item['views'];
-      final viewsStr = viewsVal == null
-          ? ''
-          : (viewsVal is num ? viewsVal.toString() : viewsVal.toString());
-      return TrendingContent(
-        title: (item['title'] ?? 'Untitled').toString(),
-        creator: (item['channelName'] ?? item['channel'] ?? 'Unknown').toString(),
-        views: viewsStr,
-        category: (item['type'] ?? 'Video').toString(),
-        imageUrl: (item['thumbnailUrl'] ?? item['imageUrl'] ?? '').toString(),
-        fullImageUrl: (item['imageUrl'] ?? item['thumbnailUrl'])?.toString(),
-        link: (item['link'] ?? item['sourceUrl'])?.toString(),
-        duration: item['duration']?.toString(),
-        type: (item['type'] ?? 'video').toString(),
-      );
-    }
-    // Fallback for object with fields (SerpItem)
-    try {
-      final dynamic obj = item;
-      return TrendingContent(
-        title: (obj.title ?? 'Untitled').toString(),
-        creator: (obj.channelName ?? 'Unknown').toString(),
-        views: (obj.views?.toString() ?? ''),
-        category: (obj.type ?? 'Video').toString(),
-        imageUrl: (obj.imageUrl ?? '').toString(),
-        fullImageUrl: (obj.imageUrl ?? '').toString(),
-        link: (obj.sourceUrl ?? obj.link ?? '').toString(),
-        duration: (obj.duration ?? '').toString().isEmpty ? null : (obj.duration ?? '').toString(),
-        type: (obj.type ?? 'video').toString(),
-      );
-    } catch (_) {
-      return TrendingContent(
-        title: 'Untitled',
-        creator: 'Unknown',
-        views: '',
-        category: 'Video',
-        imageUrl: '',
-      );
-    }
   }
 
   List<TrendingContent> _getTrendingContent() {
@@ -524,75 +457,30 @@ class _TrendingChatScreenState extends State<TrendingChatScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thumbnail with Duration Badge (for videos)
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-                child: CachedNetworkImage(
-                  imageUrl: content.imageUrl,
-                  height: 180,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    height: 180,
-                    color: Colors.grey.shade200,
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFFFF6B00),
-                        strokeWidth: 2,
-                      ),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    height: 180,
-                    color: Colors.grey.shade300,
-                    child: const Icon(Icons.image, size: 50, color: Colors.grey),
+          // Thumbnail
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+            child: CachedNetworkImage(
+              imageUrl: content.imageUrl,
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                height: 180,
+                color: Colors.grey.shade200,
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFFFF6B00),
+                    strokeWidth: 2,
                   ),
                 ),
               ),
-              // Play overlay button (opens link)
-              if (content.link != null && content.link!.isNotEmpty)
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.black26,
-                    child: InkWell(
-                      onTap: () => _openLink(content.link!),
-                      child: Center(
-                        child: Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.play_arrow_rounded, size: 36, color: Colors.red),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              if (content.duration != null)
-                Positioned(
-                  bottom: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      content.duration!,
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+              errorWidget: (context, url, error) => Container(
+                height: 180,
+                color: Colors.grey.shade300,
+                child: const Icon(Icons.image, size: 50, color: Colors.grey),
+              ),
+            ),
           ),
           
           // Content Info
@@ -634,63 +522,22 @@ class _TrendingChatScreenState extends State<TrendingChatScreen>
                     const SizedBox(width: 8),
                     Icon(Icons.person_outline, size: 14, color: Colors.grey.shade600),
                     const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        content.creator,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      content.creator,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
                       ),
                     ),
-                    if (content.views.isNotEmpty) ...[
-                      Icon(Icons.visibility_outlined, size: 14, color: Colors.grey.shade600),
-                      const SizedBox(width: 4),
-                      Text(
-                        content.views,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-                
-                // Action Buttons Row
-                Row(
-                  children: [
-                    // Save to Collection Button
-                    Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.bookmark_outline,
-                        label: 'Save',
-                        onTap: () => _saveToCollection(content),
-                        color: const Color(0xFFFF6B00),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Download Button
-                    Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.download_outlined,
-                        label: 'Download',
-                        onTap: () => _downloadImage(content),
-                        color: Colors.blue,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Add to Thumbnail Generator Button
-                    Expanded(
-                      child: _buildActionButton(
-                        icon: Icons.add_photo_alternate_outlined,
-                        label: 'Add',
-                        onTap: () => _addToThumbnailGenerator(content),
-                        color: Colors.green,
+                    const Spacer(),
+                    Icon(Icons.visibility_outlined, size: 14, color: Colors.grey.shade600),
+                    const SizedBox(width: 4),
+                    Text(
+                      content.views,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade600,
                       ),
                     ),
                   ],
@@ -699,145 +546,6 @@ class _TrendingChatScreenState extends State<TrendingChatScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    required Color color,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3), width: 1),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _saveToCollection(TrendingContent content) async {
-    try {
-      await _collectionService.saveToCollection(
-        title: content.title,
-        description: '${content.category} by ${content.creator}',
-        imageUrl: content.fullImageUrl ?? content.imageUrl,
-        source: 'serp',
-        type: content.type ?? 'video',
-        metadata: {
-          'channelName': content.creator,
-          'views': content.views,
-          if (content.duration != null) 'duration': content.duration,
-          if (content.link != null) 'link': content.link,
-        },
-        tags: [content.category.toLowerCase()],
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Saved to collection!'),
-            backgroundColor: const Color(0xFFFF6B00),
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      print('Error saving to collection: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _downloadImage(TrendingContent content) async {
-    try {
-      // Show downloading message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text('Downloading...'),
-            ],
-          ),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-
-      // TODO: Implement actual download functionality
-      // For now, just save to collection as a fallback
-      await _saveToCollection(content);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Downloaded and saved to collection!'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      print('Error downloading: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Download failed: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  void _addToThumbnailGenerator(TrendingContent content) {
-    // Navigate to Thumbnail Generator with the content as inspiration
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ThumbnailGeneratorScreen(
-          initialPrompt: 'Create a YouTube thumbnail for: ${content.title}. Make it colorful, eye-catching, and professional quality for ${content.creator}',
-        ),
       ),
     );
   }
@@ -923,26 +631,6 @@ class _TrendingChatScreenState extends State<TrendingChatScreen>
       },
     );
   }
-
-  Future<void> _openLink(String url) async {
-    try {
-      final uri = Uri.parse(url);
-      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!ok) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to open link.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unable to open link: $e')),
-        );
-      }
-    }
-  }
 }
 
 class ChatMessage {
@@ -967,10 +655,6 @@ class TrendingContent {
   final String views;
   final String category;
   final String imageUrl;
-  final String? fullImageUrl;
-  final String? link;
-  final String? duration;
-  final String? type;
 
   TrendingContent({
     required this.title,
@@ -978,12 +662,5 @@ class TrendingContent {
     required this.views,
     required this.category,
     required this.imageUrl,
-    this.fullImageUrl,
-    this.link,
-    this.duration,
-    this.type,
   });
 }
-
-// A small shim to use url_launcher without hard crashing if dependency missing at edit time
-// (url_launcher used above for opening external links)

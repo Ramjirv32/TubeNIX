@@ -7,6 +7,9 @@ import { errorHandler } from './middleware/errorHandler.js';
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
+import serpRoutes from './routes/serpRoutes.js';
+import collectionRoutes from './routes/collectionRoutes.js';
+import thumbnailRoutes from './routes/thumbnailRoutes.js';
 
 // Initialize Express app
 const app = express();
@@ -42,6 +45,9 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/serp', serpRoutes);
+app.use('/api/collections', collectionRoutes);
+app.use('/api/thumbnails', thumbnailRoutes);
 
 // Root route
 app.get('/', (req, res) => {

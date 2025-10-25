@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+import '../services/thumbnail_service.dart';
 
 /// AI Chat Screen
 /// Chat interface for generating thumbnails with AI
 class AIChatScreen extends StatefulWidget {
-  const AIChatScreen({super.key});
+  final String? initialImage;
+  final String? initialPrompt;
+  
+  const AIChatScreen({
+    super.key,
+    this.initialImage,
+    this.initialPrompt,
+  });
 
   @override
   State<AIChatScreen> createState() => _AIChatScreenState();
@@ -14,30 +24,96 @@ class _AIChatScreenState extends State<AIChatScreen> {
   final List<ChatMessage> _messages = [];
 
   @override
+  void initState() {
+    super.initState();
+    // If initial prompt or image is provided, show it
+    if (widget.initialImage != null || widget.initialPrompt != null) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          setState(() {
+            if (widget.initialPrompt != null) {
+              _messages.add(ChatMessage(
+                text: widget.initialPrompt!,
+                isUser: false,
+                timestamp: DateTime.now(),
+              ));
+            }
+            if (widget.initialImage != null) {
+              _messages.add(ChatMessage(
+                text: 'Image added from trending content. You can now ask me to modify it or create a similar thumbnail.',
+                isUser: false,
+                timestamp: DateTime.now(),
+                imageUrl: widget.initialImage,
+              ));
+            }
+          });
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _messageController.dispose();
     super.dispose();
   }
 
-  void _sendMessage() {
+  void _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
+
+    final userMessage = _messageController.text.trim();
+    _messageController.clear();
 
     setState(() {
       _messages.add(ChatMessage(
-        text: _messageController.text,
+        text: userMessage,
         isUser: true,
         timestamp: DateTime.now(),
       ));
 
-      // Simulate AI response
+      // Show typing indicator
       _messages.add(ChatMessage(
-        text: 'I can help you generate amazing thumbnails! This feature is coming soon.',
+        text: '🎨 Generating your thumbnail...',
         isUser: false,
         timestamp: DateTime.now(),
+        isTyping: true,
       ));
     });
 
-    _messageController.clear();
+    try {
+      // Generate thumbnail using Gemini AI
+      final result = await thumbnailService.generateThumbnail(
+        prompt: userMessage,
+        saveToCollection: true,
+        makePublic: false,
+      );
+
+      setState(() {
+        // Remove typing indicator
+        _messages.removeWhere((msg) => msg.isTyping == true);
+        
+        // Add success message with image
+        _messages.add(ChatMessage(
+          text: 'Here\'s your generated thumbnail! 🎨\n\nPrompt: "${result.prompt}"\nSize: ${result.size}',
+          isUser: false,
+          timestamp: DateTime.now(),
+          generatedImage: result.imageBytes,
+          thumbnailId: result.id,
+        ));
+      });
+    } catch (e) {
+      setState(() {
+        // Remove typing indicator
+        _messages.removeWhere((msg) => msg.isTyping == true);
+        
+        // Show error message
+        _messages.add(ChatMessage(
+          text: '❌ Sorry, I couldn\'t generate that thumbnail.\n\nError: ${e.toString()}\n\nThis might be due to API quota limits. Please try again later or with a different prompt.',
+          isUser: false,
+          timestamp: DateTime.now(),
+        ));
+      });
+    }
   }
 
   @override
@@ -259,7 +335,11 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 ),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.smart_toy, color: Colors.white, size: 18),
+              child: Icon(
+                message.isTyping ? Icons.more_horiz : Icons.smart_toy, 
+                color: Colors.white, 
+                size: 18
+              ),
             ),
             const SizedBox(width: 8),
           ],
@@ -272,12 +352,86 @@ class _AIChatScreenState extends State<AIChatScreen> {
                     : const Color(0xFFF5F5F5),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: message.isUser ? Colors.white : Colors.black,
-                  fontSize: 14,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Text message
+                  Text(
+                    message.text,
+                    style: TextStyle(
+                      color: message.isUser ? Colors.white : Colors.black,
+                      fontSize: 14,
+                    ),
+                  ),
+                  
+                  // Generated image display
+                  if (message.generatedImage != null) ...[
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(
+                        message.generatedImage!,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 200,
+                            color: Colors.grey[300],
+                            child: const Center(
+                              child: Icon(Icons.error, color: Colors.red),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    
+                    // Action buttons for generated image
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildImageActionButton(
+                          icon: Icons.download,
+                          label: 'Download',
+                          onTap: () => _downloadThumbnail(message.thumbnailId!),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildImageActionButton(
+                          icon: Icons.share,
+                          label: 'Share',
+                          onTap: () => _shareThumbnail(message.thumbnailId!),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildImageActionButton(
+                          icon: Icons.refresh,
+                          label: 'Regenerate',
+                          onTap: () => _regenerateThumbnail(message.text),
+                        ),
+                      ],
+                    ),
+                  ],
+                  
+                  // Regular image from URL (if provided)
+                  if (message.imageUrl != null) ...[
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        message.imageUrl!,
+                        width: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 200,
+                            height: 100,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.broken_image),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -367,16 +521,100 @@ class _AIChatScreenState extends State<AIChatScreen> {
       onTap: onTap,
     );
   }
+
+  Widget _buildImageActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(8),
+          color: Colors.white,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: Colors.grey[600]),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _downloadThumbnail(String thumbnailId) async {
+    try {
+      final bytes = await thumbnailService.downloadThumbnail(thumbnailId);
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Thumbnail downloaded successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Download failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _shareThumbnail(String thumbnailId) async {
+    // Placeholder for sharing functionality
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🚀 Sharing feature coming soon!'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    }
+  }
+
+  Future<void> _regenerateThumbnail(String originalPrompt) async {
+    // Extract the user prompt from the message
+    _messageController.text = originalPrompt;
+    _sendMessage();
+  }
 }
 
 class ChatMessage {
   final String text;
   final bool isUser;
   final DateTime timestamp;
+  final String? imageUrl;
+  final Uint8List? generatedImage;
+  final String? thumbnailId;
+  final bool isTyping;
 
   ChatMessage({
     required this.text,
     required this.isUser,
     required this.timestamp,
+    this.imageUrl,
+    this.generatedImage,
+    this.thumbnailId,
+    this.isTyping = false,
   });
 }

@@ -22,6 +22,18 @@ class ApiConfig {
   static const String updateSettings = '$baseUrl/auth/settings';
   static const String getSettings = '$baseUrl/auth/settings';
   
+  // SERP API endpoints
+  static const String trendingVideos = '$baseUrl/serp/trending/videos';
+  static const String searchVideos = '$baseUrl/serp/search/videos';
+  static const String trendingImages = '$baseUrl/serp/trending/images';
+  static const String searchImages = '$baseUrl/serp/search/images';
+  static const String chatSuggestions = '$baseUrl/serp/chat/suggestions';
+  
+  // Collection endpoints
+  static const String collections = '$baseUrl/collections';
+  static String collectionById(String id) => '$baseUrl/collections/$id';
+  static String toggleLike(String id) => '$baseUrl/collections/$id/like';
+  
   // Timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
