@@ -81,11 +81,9 @@ class _AIChatScreenState extends State<AIChatScreen> {
     });
 
     try {
-      // Generate thumbnail using Gemini AI
-      final result = await thumbnailService.generateThumbnail(
+      // Generate thumbnail using demo endpoint (since Gemini API has quota limits)
+      final result = await thumbnailService.generateThumbnailDemo(
         prompt: userMessage,
-        saveToCollection: true,
-        makePublic: false,
       );
 
       setState(() {

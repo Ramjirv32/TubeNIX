@@ -8,7 +8,8 @@ import {
   getPublicThumbnails,
   getThumbnailById,
   toggleThumbnailPublic,
-  generateThumbnailDemo
+  generateThumbnailDemo,
+  generateMultipleThumbnailsDemo
 } from '../controllers/thumbnailController.js';
 
 const router = express.Router();
@@ -18,6 +19,9 @@ router.post('/generate', protect, generateThumbnail);
 
 // Demo thumbnail generation (no auth required for testing)
 router.post('/generate-demo', generateThumbnailDemo);
+
+// Demo multiple thumbnail generation (no auth required for testing)
+router.post('/generate-multiple-demo', generateMultipleThumbnailsDemo);
 
 // Generate multiple thumbnails (requires auth)
 router.post('/generate-multiple', protect, generateMultipleThumbnails);

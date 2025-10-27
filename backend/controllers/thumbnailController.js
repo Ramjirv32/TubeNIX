@@ -413,3 +413,57 @@ export const generateThumbnailDemo = async (req, res, next) => {
     next(error);
   }
 };
+
+// Demo endpoint for multiple thumbnail generation
+export const generateMultipleThumbnailsDemo = async (req, res, next) => {
+  try {
+    const { prompt, count = 3 } = req.body;
+
+    if (!prompt || prompt.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Prompt is required'
+      });
+    }
+
+    console.log(`Demo multiple thumbnail generation for prompt: ${prompt}, count: ${count}`);
+
+    // Generate multiple demo thumbnails with different styles
+    const demoThumbnails = [];
+    const styles = ['modern', 'colorful', 'minimalist', 'bold', 'playful'];
+    
+    for (let i = 0; i < Math.min(count, 5); i++) {
+      // Different demo images (still 1x1 pixels but different colors)
+      const colors = ['FF0000', '00FF00', '0000FF', 'FFFF00', 'FF00FF'];
+      const colorHex = colors[i % colors.length];
+      
+      // Simple 1x1 colored pixel in base64 (different colors for variety)
+      const demoBase64 = `iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==`;
+      
+      demoThumbnails.push({
+        id: `demo-multiple-${Date.now()}-${i + 1}`,
+        base64: demoBase64,
+        size: '1 KB',
+        variation: i + 1,
+        style: styles[i % styles.length],
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Generated ${demoThumbnails.length} demo thumbnails successfully`,
+      data: {
+        thumbnails: demoThumbnails,
+        prompt: prompt,
+        count: demoThumbnails.length,
+        savedToCollection: false,
+        isPublic: false,
+        note: 'These are demo responses. Actual Gemini API integration requires quota.'
+      }
+    });
+
+  } catch (error) {
+    console.error('Demo multiple thumbnail generation error:', error);
+    next(error);
+  }
+};
