@@ -151,10 +151,7 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
     });
     
     try {
-      final thumbnails = await _thumbnailService.getUserThumbnails(
-        limit: 10, // Show latest 10 user thumbnails
-        page: 1,
-      );
+      final thumbnails = await _thumbnailService.getUserThumbnails();
       
       if (mounted) {
         setState(() {

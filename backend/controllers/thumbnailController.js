@@ -1,4 +1,5 @@
 import geminiService from '../services/geminiService.js';
+import huggingFaceService from '../services/huggingFaceService.js';
 import UserThumbnail from '../models/UserThumbnail.js';
 import Collection from '../models/Collection.js';
 import fs from 'fs';
@@ -26,16 +27,17 @@ export const generateThumbnail = async (req, res, next) => {
       });
     }
 
-    if (!geminiService.isPromptSafe(prompt)) {
+    if (!huggingFaceService.isPromptSafe(prompt)) {
       return res.status(400).json({
         success: false,
         message: 'Prompt contains inappropriate content'
       });
     }
 
-    console.log(`Generating thumbnail for user ${userEmail}: ${prompt}`);
+    console.log(`🎨 Generating thumbnail for user ${userEmail}: ${prompt}`);
 
-    const result = await geminiService.generateThumbnail(prompt);
+    // Use Hugging Face service instead of Gemini
+    const result = await huggingFaceService.generateThumbnail(prompt);
 
     if (!result.success) {
       return res.status(500).json({
@@ -52,36 +54,41 @@ export const generateThumbnail = async (req, res, next) => {
       originalPrompt: result.data.originalPrompt,
       base64Image: result.data.base64,
       imageSize: result.data.size,
-      textResponse: result.data.textResponse,
+      textResponse: result.data.model || 'FLUX.1-dev',
       isPublic: makePublic,
       metadata: {
-        model: 'gemini-2.5-flash-image',
+        model: result.data.model || 'FLUX.1-dev',
         generatedAt: new Date(result.data.generatedAt),
+        dimensions: result.data.dimensions || '1024x576',
+        fromCache: result.data.fromCache || false
       }
     });
 
     await userThumbnail.save();
+    console.log('✅ Saved to UserThumbnail collection');
 
     // Optionally save to Collections as well
     if (saveToCollection) {
       const collection = new Collection({
         user: userId,
         title: `AI Generated: ${result.data.originalPrompt}`,
-        description: `Generated using Gemini AI: ${result.data.prompt}`,
+        description: `Generated using Hugging Face FLUX.1-dev: ${result.data.prompt}`,
         imageUrl: `data:image/png;base64,${result.data.base64}`,
         base64Image: result.data.base64,
         source: 'ai-generated',
         type: 'ai-thumbnail',
         isPublic: makePublic,
         metadata: {
-          aiModel: 'gemini-2.5-flash-image',
+          aiModel: result.data.model || 'FLUX.1-dev',
           originalPrompt: result.data.originalPrompt,
           enhancedPrompt: result.data.prompt,
           generatedAt: result.data.generatedAt,
+          dimensions: result.data.dimensions || '1024x576'
         }
       });
 
       await collection.save();
+      console.log('✅ Saved to Collections');
     }
 
     res.status(201).json({
@@ -118,27 +125,28 @@ export const generateMultipleThumbnails = async (req, res, next) => {
       });
     }
 
-    if (!geminiService.isPromptSafe(prompt)) {
+    if (!huggingFaceService.isPromptSafe(prompt)) {
       return res.status(400).json({
         success: false,
         message: 'Prompt contains inappropriate content'
       });
     }
 
-    console.log(`Generating ${count} thumbnails for user ${userEmail}: ${prompt}`);
+    console.log(`🎨 Generating ${count} thumbnails for user ${userEmail}: ${prompt}`);
 
-    const result = await geminiService.generateMultipleThumbnails(prompt, Math.min(count, 5));
+    // Use Hugging Face service
+    const results = await huggingFaceService.generateMultipleThumbnails(prompt, Math.min(count, 5));
 
-    if (!result.success) {
+    if (!results || results.length === 0) {
       return res.status(500).json({
         success: false,
-        message: result.message
+        message: 'Failed to generate thumbnails'
       });
     }
 
     const savedThumbnails = [];
 
-    for (const thumbnail of result.data) {
+    for (const thumbnail of results) {
       const userThumbnail = new UserThumbnail({
         userEmail,
         userId,
@@ -146,12 +154,13 @@ export const generateMultipleThumbnails = async (req, res, next) => {
         originalPrompt: thumbnail.originalPrompt,
         base64Image: thumbnail.base64,
         imageSize: thumbnail.size,
-        textResponse: thumbnail.textResponse,
+        textResponse: thumbnail.model || 'FLUX.1-dev',
         isPublic: makePublic,
         metadata: {
-          model: 'gemini-2.5-flash-image',
+          model: thumbnail.model || 'FLUX.1-dev',
           generatedAt: new Date(thumbnail.generatedAt),
-          variation: thumbnail.variation,
+          dimensions: thumbnail.dimensions || '1024x576',
+          variation: thumbnail.variation
         }
       });
 
@@ -168,18 +177,19 @@ export const generateMultipleThumbnails = async (req, res, next) => {
         const collection = new Collection({
           user: userId,
           title: `AI Generated V${thumbnail.variation}: ${thumbnail.originalPrompt}`,
-          description: `Generated using Gemini AI: ${thumbnail.prompt}`,
+          description: `Generated using Hugging Face FLUX.1-dev: ${thumbnail.prompt}`,
           imageUrl: `data:image/png;base64,${thumbnail.base64}`,
           base64Image: thumbnail.base64,
           source: 'ai-generated',
           type: 'ai-thumbnail',
           isPublic: makePublic,
           metadata: {
-            aiModel: 'gemini-2.5-flash-image',
+            aiModel: thumbnail.model || 'FLUX.1-dev',
             originalPrompt: thumbnail.originalPrompt,
             enhancedPrompt: thumbnail.prompt,
             generatedAt: thumbnail.generatedAt,
             variation: thumbnail.variation,
+            dimensions: thumbnail.dimensions || '1024x576'
           }
         });
 

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/thumbnail_service.dart';
+import '../services/thumbnail_state_manager.dart';
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -43,6 +44,7 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
     );
     _tabController = TabController(length: 3, vsync: this, initialIndex: _selectedTabIndex);
     _checkAuthStatus();
+    _restoreGenerationState(); // Load persisted state
     if (widget.initialPrompt != null) {
       _promptController.text = widget.initialPrompt!;
     }
@@ -55,6 +57,49 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
     _animationController.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _restoreGenerationState() async {
+    // Load persisted generation states
+    await thumbnailStateManager.loadStates();
+    
+    // Check for any active (generating) states
+    final activeStates = thumbnailStateManager.getActiveStates();
+    
+    if (activeStates.isNotEmpty) {
+      print('📦 Found ${activeStates.length} active generation tasks');
+      
+      // Show snackbar to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Found ${activeStates.length} pending thumbnail generation(s)'),
+            action: SnackBarAction(
+              label: 'Clear',
+              onPressed: () => thumbnailStateManager.clearCompletedStates(),
+            ),
+          ),
+        );
+      }
+    }
+    
+    // Check for completed states and load them
+    final completedStates = thumbnailStateManager.getCompletedStates();
+    if (completedStates.isNotEmpty && mounted) {
+      setState(() {
+        for (var state in completedStates) {
+          if (state.base64Image != null && state.base64Image!.isNotEmpty) {
+            _generatedThumbnails.add(ThumbnailResult(
+              id: state.id,
+              base64: state.base64Image!,
+              prompt: state.prompt,
+              size: 'Restored',
+              createdAt: state.startedAt,
+            ));
+          }
+        }
+      });
+    }
   }
 
   Future<void> _checkAuthStatus() async {
