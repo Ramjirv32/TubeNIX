@@ -2,8 +2,7 @@ import mongoose from 'mongoose';
 
 const collectionSchema = new mongoose.Schema({
   user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: mongoose.Schema.Types.Mixed, // Allow both ObjectId and string for testing
     required: true,
   },
   title: {

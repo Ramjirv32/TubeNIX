@@ -1,13 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../models/trending_thumbnail_model.dart';
 import '../widgets/trending_thumbnail_card.dart';
+import '../services/serp_service.dart';
+import '../services/collection_service.dart';
+import '../services/thumbnail_service.dart';
 import 'ai_chat_screen.dart';
 import 'my_thumbnails_screen.dart';
 import 'analytics_screen.dart';
 import 'settings_screen.dart';
 import 'trending_chat_screen.dart';
+import 'thumbnail_generator_screen.dart';
+import 'collections_screen.dart';
+
+extension UserThumbnailExtension on UserThumbnail {
+  String get imageUrl {
+    // For now, use a placeholder with the prompt as text
+    // In a real implementation, this would be fetched from the backend
+    return 'https://via.placeholder.com/180x120/FF6B00/FFFFFF?text=${Uri.encodeComponent(prompt.substring(0, prompt.length > 10 ? 10 : prompt.length))}';
+  }
+}
 
 /// New Dashboard - Shows trending thumbnails from all users with charts
 class NewDashboardScreen extends StatefulWidget {
@@ -21,12 +35,19 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
   List<TrendingThumbnail> _trendingThumbnails = [];
+  List<SerpItem> _serpResults = [];
   String _sortBy = 'views'; // views, likes, saves, downloads
+  bool _isLoading = false;
+  List<UserThumbnail> _userThumbnails = [];
+  bool _isLoadingUserThumbnails = false;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   late AnimationController _chartAnimationController;
   late Animation<double> _chartAnimation;
   bool _isGenerating = false;
+  final SerpService _serpService = SerpService();
+  final CollectionService _collectionService = CollectionService();
+  final ThumbnailService _thumbnailService = ThumbnailService();
 
   @override
   void initState() {
@@ -40,10 +61,20 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
       curve: Curves.easeOutCubic,
     );
     _loadTrendingThumbnails();
+    _loadUserThumbnails();
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.toLowerCase();
       });
+      
+      // Debounced search
+      if (_searchQuery.isNotEmpty) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (_searchController.text.toLowerCase() == _searchQuery) {
+            _searchContent(_searchQuery);
+          }
+        });
+      }
     });
     // Start chart animation
     Future.delayed(const Duration(milliseconds: 300), () {
@@ -51,11 +82,96 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
     });
   }
 
-  void _loadTrendingThumbnails() {
+  Future<void> _loadTrendingThumbnails() async {
     setState(() {
-      _trendingThumbnails = TrendingData.getTrending();
-      _sortThumbnails();
+      _isLoading = true;
     });
+
+    try {
+      // Load trending videos from SERP API
+      final serpResults = await _serpService.getTrendingVideos();
+      
+      print('🔄 Converting ${serpResults.length} SERP items to TrendingThumbnails');
+      
+      // Convert SerpItems to TrendingThumbnails
+      final trending = serpResults.map((item) {
+        print('📊 SERP Item: id="${item.id}", title="${item.title}", imageUrl="${item.imageUrl}"');
+        return TrendingThumbnail(
+          id: item.id,
+          title: item.title,
+          imageUrl: item.imageUrl,
+          dateCreated: DateTime.now(),
+          ctrPercentage: 0.0, // Default CTR
+          creatorName: item.channelName ?? 'Unknown Creator',
+          creatorAvatar: (item.channelName?.isNotEmpty == true) 
+            ? item.channelName!.substring(0, 1).toUpperCase()
+            : 'U',
+          views: item.views,
+          likes: 0, // Will be loaded from collections
+          saves: 0,
+          downloads: 0,
+          isLiked: false,
+          isSaved: false,
+        );
+      }).toList();
+
+      setState(() {
+        _serpResults = serpResults;
+        _trendingThumbnails = trending;
+        _sortThumbnails();
+      });
+    } catch (e) {
+      print('Error loading trending thumbnails: $e');
+      // Fallback to dummy data
+      setState(() {
+        _trendingThumbnails = TrendingData.getTrending();
+        _sortThumbnails();
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load trending content: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadUserThumbnails() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoadingUserThumbnails = true;
+    });
+    
+    try {
+      final thumbnails = await _thumbnailService.getUserThumbnails(
+        limit: 10, // Show latest 10 user thumbnails
+        page: 1,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _userThumbnails = thumbnails;
+        });
+      }
+    } catch (e) {
+      print('Error loading user thumbnails: $e');
+      // Don't show error for user thumbnails as it's optional content
+      // User thumbnails require authentication, so it's ok if this fails
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingUserThumbnails = false;
+        });
+      }
+    }
   }
 
   void _sortThumbnails() {
@@ -85,36 +201,183 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
         .toList();
   }
 
-  void _toggleLike(String id) {
+  Future<void> _searchContent(String query) async {
+    if (query.isEmpty) {
+      _loadTrendingThumbnails();
+      return;
+    }
+
     setState(() {
-      final index = _trendingThumbnails.indexWhere((t) => t.id == id);
-      if (index != -1) {
-        final thumbnail = _trendingThumbnails[index];
-        _trendingThumbnails[index] = thumbnail.copyWith(
-          isLiked: !thumbnail.isLiked,
-          likes: thumbnail.isLiked ? thumbnail.likes - 1 : thumbnail.likes + 1,
+      _isLoading = true;
+    });
+
+    try {
+      // Search videos using SERP API
+      final searchResults = await _serpService.searchVideos(query);
+      
+      // Convert to TrendingThumbnails
+      final trending = searchResults.map((item) => TrendingThumbnail(
+        id: item.id,
+        title: item.title,
+        imageUrl: item.imageUrl,
+        dateCreated: DateTime.now(),
+        ctrPercentage: 0.0, // Default CTR
+        creatorName: item.channelName ?? 'Unknown Creator',
+        creatorAvatar: (item.channelName?.isNotEmpty == true) 
+          ? item.channelName!.substring(0, 1).toUpperCase()
+          : 'U',
+        views: item.views,
+        likes: 0,
+        saves: 0,
+        downloads: 0,
+        isLiked: false,
+        isSaved: false,
+      )).toList();
+
+      setState(() {
+        _serpResults = searchResults;
+        _trendingThumbnails = trending;
+        _sortThumbnails();
+      });
+    } catch (e) {
+      print('Error searching content: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Search failed: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
-    });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
-  void _toggleSave(String id) {
-    setState(() {
+  Future<void> _toggleLike(String id) async {
+    try {
       final index = _trendingThumbnails.indexWhere((t) => t.id == id);
-      if (index != -1) {
-        final thumbnail = _trendingThumbnails[index];
-        _trendingThumbnails[index] = thumbnail.copyWith(
-          isSaved: !thumbnail.isSaved,
-          saves: thumbnail.isSaved ? thumbnail.saves - 1 : thumbnail.saves + 1,
-        );
-        
-        if (!thumbnail.isSaved) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Saved to your collection')),
+      if (index == -1) return;
+
+      final thumbnail = _trendingThumbnails[index];
+      
+      if (thumbnail.isLiked) {
+        // Unlike - remove from collection
+        // For now just update UI, implement delete later
+        setState(() {
+          _trendingThumbnails[index] = thumbnail.copyWith(
+            isLiked: false,
+            likes: thumbnail.likes - 1,
           );
-        }
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Removed from your collection!'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } else {
+        // Like - save to collection using thumbnail data
+        print('🔍 Thumbnail data before saving:');
+        print('  Title: "${thumbnail.title}"');
+        print('  ImageURL: "${thumbnail.imageUrl}"');
+        print('  CreatorName: "${thumbnail.creatorName}"');
+        
+        await _collectionService.saveToCollection(
+          title: thumbnail.title,
+          description: 'Liked from trending videos - ${thumbnail.creatorName}',
+          imageUrl: thumbnail.imageUrl,
+          source: 'serp',
+          type: 'video',
+          metadata: {
+            'channelName': thumbnail.creatorName,
+            'views': thumbnail.views.toString(),
+            'ctr': thumbnail.ctrPercentage.toString(),
+          },
+          tags: ['liked', 'trending'],
+        );
+
+        setState(() {
+          _trendingThumbnails[index] = thumbnail.copyWith(
+            isLiked: true,
+            likes: thumbnail.likes + 1,
+          );
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Added to your collection!'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
-    });
+    } catch (e) {
+      print('Error toggling like: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to like: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleSave(String id) async {
+    try {
+      final index = _trendingThumbnails.indexWhere((t) => t.id == id);
+      if (index == -1) return;
+      
+      final thumbnail = _trendingThumbnails[index];
+      final newSavedState = !thumbnail.isSaved;
+      
+      if (newSavedState) {
+        // Save to collection
+        print('🔍 Thumbnail data before saving:');
+        print('  Title: "${thumbnail.title}"');
+        print('  ImageURL: "${thumbnail.imageUrl}"');
+        print('  CreatorName: "${thumbnail.creatorName}"');
+        
+        await _collectionService.saveToCollection(
+          title: thumbnail.title,
+          imageUrl: thumbnail.imageUrl,
+          description: 'Saved from trending videos - ${thumbnail.creatorName}',
+          source: 'serp',
+          type: 'video',
+          metadata: {
+            'channelName': thumbnail.creatorName,
+            'views': thumbnail.views.toString(),
+            'ctr': thumbnail.ctrPercentage.toString(),
+          },
+          tags: ['saved', 'trending'],
+        );
+      }
+      
+      // Update UI
+      setState(() {
+        _trendingThumbnails[index] = thumbnail.copyWith(
+          isSaved: newSavedState,
+          saves: newSavedState ? thumbnail.saves + 1 : thumbnail.saves - 1,
+        );
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(newSavedState ? 'Saved to your collection!' : 'Removed from collection!'),
+          backgroundColor: newSavedState ? Colors.green : Colors.orange,
+        ),
+      );
+    } catch (e) {
+      print('Error toggling save: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _download(String id) {
@@ -132,23 +395,12 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
           ? _buildHomeContent()
           : _buildOtherScreens(),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isGenerating ? null : () async {
-          setState(() {
-            _isGenerating = true;
-          });
-          
-          // Simulate generation process
-          await Future.delayed(const Duration(seconds: 2));
-          
-          if (!mounted) return;
-          
-          setState(() {
-            _isGenerating = false;
-          });
-          
+        onPressed: _isGenerating ? null : () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AIChatScreen()),
+            MaterialPageRoute(
+              builder: (context) => const ThumbnailGeneratorScreen(),
+            ),
           );
         },
         backgroundColor: _isGenerating ? Colors.grey : const Color(0xFFFF0000),
@@ -226,8 +478,32 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: Colors.black),
-          onPressed: () {},
+          icon: Stack(
+            children: [
+              const Icon(Icons.bookmark_outline, color: Colors.black, size: 28),
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF6B00),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.favorite, color: Colors.white, size: 12),
+                ),
+              ),
+            ],
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const CollectionsScreen(),
+              ),
+            );
+          },
+          tooltip: 'My Collections & Liked',
         ),
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
@@ -388,17 +664,35 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _filteredThumbnails.isEmpty
+                  _isLoading
                       ? const Center(
                           child: Padding(
                             padding: EdgeInsets.all(32.0),
-                            child: Text(
-                              'No thumbnails found',
-                              style: TextStyle(color: Colors.grey),
+                            child: Column(
+                              children: [
+                                CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B00)),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Loading trending content...',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ],
                             ),
                           ),
                         )
-                      : GridView.builder(
+                      : _filteredThumbnails.isEmpty
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(32.0),
+                                child: Text(
+                                  'No thumbnails found',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                            )
+                          : GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -417,6 +711,109 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
                             );
                           },
                         ),
+                  
+                  // User Generated Thumbnails Section
+                  if (_userThumbnails.isNotEmpty) ...[
+                    const SizedBox(height: 32),
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Your AI Generated Thumbnails',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Icon(Icons.auto_awesome, color: Color(0xFFFF6B00)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    _isLoadingUserThumbnails
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF6B00)),
+                              ),
+                            ),
+                          )
+                        : SizedBox(
+                            height: 120,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _userThumbnails.length,
+                              itemBuilder: (context, index) {
+                                final thumbnail = _userThumbnails[index];
+                                return Container(
+                                  width: 180,
+                                  margin: const EdgeInsets.only(right: 12),
+                                  child: Card(
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Stack(
+                                        children: [
+                                          Container(
+                                            width: double.infinity,
+                                            height: double.infinity,
+                                            child: CachedNetworkImage(
+                                              imageUrl: thumbnail.imageUrl,
+                                              fit: BoxFit.cover,
+                                              placeholder: (context, url) => Container(
+                                                color: Colors.grey[300],
+                                                child: const Center(
+                                                  child: CircularProgressIndicator(),
+                                                ),
+                                              ),
+                                              errorWidget: (context, url, error) => Container(
+                                                color: Colors.grey[300],
+                                                child: const Icon(Icons.image_not_supported),
+                                              ),
+                                            ),
+                                          ),
+                                          Positioned(
+                                            bottom: 0,
+                                            left: 0,
+                                            right: 0,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.bottomCenter,
+                                                  end: Alignment.topCenter,
+                                                  colors: [
+                                                    Colors.black.withOpacity(0.8),
+                                                    Colors.transparent,
+                                                  ],
+                                                ),
+                                              ),
+                                              child: Text(
+                                                thumbnail.prompt ?? 'AI Generated',
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                  ],
                 ],
               ),
             ),
@@ -458,6 +855,19 @@ class _NewDashboardScreenState extends State<NewDashboardScreen>
 
   Widget _buildBarChart() {
     final topThumbnails = _trendingThumbnails.take(5).toList();
+    
+    // Handle empty data case
+    if (topThumbnails.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: Text(
+            'No data available for chart',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+      );
+    }
     
     return AnimatedBuilder(
       animation: _chartAnimation,

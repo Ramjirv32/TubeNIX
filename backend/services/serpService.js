@@ -1,4 +1,5 @@
 import axios from 'axios';
+import redisService from './redisService.js';
 
 const SERP_API_KEY = 'b00f765aac12f9ca8de9e619170acee8a5a298c69c372ea64fa22f6646643667';
 const SERP_API_BASE_URL = 'https://serpapi.com/search';
@@ -6,6 +7,14 @@ const SERP_API_BASE_URL = 'https://serpapi.com/search';
 class SerpService {
   // Get trending YouTube videos
   async getTrendingVideos(query = 'trending', location = 'United States') {
+    // Check Redis cache first
+    const cacheKey = `trending_videos_${query}`;
+    const cachedResults = await redisService.getCachedSearchResults(cacheKey);
+    if (cachedResults) {
+      console.log('Returning cached trending videos');
+      return cachedResults;
+    }
+
     const attempts = 2;
     const timeout = 10000; 
 
@@ -59,20 +68,25 @@ class SerpService {
 
         if (videoResults.length > 0) {
           console.log('Found videos:', videoResults.length);
-          return {
+          const result = {
             success: true,
             data: videoResults.map(video => ({
               id: (video.link || video.video_id || video.id || video.url || '').toString(),
               title: video.title || video.name || video.snippet || 'Untitled',
               channelName: (video.channel && (video.channel.name || video.channel)) || video.uploader || video.source || 'Unknown',
-              thumbnailUrl: video.thumbnail?.static || video.thumbnail || video.image || video.thumbnailUrl || video.thumbnail_url || '',
+              imageUrl: video.thumbnail?.static || video.thumbnail || video.image || video.thumbnailUrl || video.thumbnail_url || 'https://via.placeholder.com/320x180?text=No+Image',
               views: video.views || video.view_count || video.formatted_views || '0',
               publishedDate: video.published_date || video.published_time || video.date || 'Recently',
               duration: video.length || video.duration || video.video_length || 'N/A',
               link: video.link || video.url || '',
               description: video.description || video.snippet || '',
+              type: 'video',
             })),
           };
+          
+          // Cache the results for 30 minutes
+          await redisService.cacheSearchResults(cacheKey, result, 1800);
+          return result;
         }
 
         // no videos found on this attempt
@@ -127,12 +141,13 @@ class SerpService {
             id: video.link || video.video_id || video.id || '',
             title: video.title || 'Untitled',
             channelName: video.channel?.name || video.channel || video.uploader || 'Unknown',
-            thumbnailUrl: video.thumbnail?.static || video.thumbnail || video.image || '',
+            imageUrl: video.thumbnail?.static || video.thumbnail || video.image || 'https://via.placeholder.com/320x180?text=No+Image',
             views: video.views || video.view_count || '0',
             publishedDate: video.published_date || video.published_time || video.date || 'Recently',
             duration: video.length || video.duration || 'N/A',
             link: video.link || video.url || '',
             description: video.description || video.snippet || '',
+            type: 'video',
           })),
         };
       }

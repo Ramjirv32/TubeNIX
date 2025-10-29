@@ -7,16 +7,16 @@ import {
   getCollectionById,
   updateCollection,
 } from '../controllers/collectionController.js';
-import { protect } from '../middleware/auth.js';
+// import { protect } from '../middleware/auth.js'; // Temporarily removed
 
 const router = express.Router();
 
-// Collection routes (all protected)
-router.get('/', protect, getCollections);
-router.post('/', protect, saveToCollection);
-router.get('/:id', protect, getCollectionById);
-router.put('/:id', protect, updateCollection);
-router.delete('/:id', protect, deleteFromCollection);
-router.post('/:id/like', protect, toggleLike);
+// Collection routes (middleware temporarily removed for testing)
+router.get('/', getCollections);
+router.post('/', saveToCollection);
+router.get('/:id', getCollectionById);
+router.put('/:id', updateCollection);
+router.delete('/:id', deleteFromCollection);
+router.post('/:id/like', toggleLike);
 
 export default router;

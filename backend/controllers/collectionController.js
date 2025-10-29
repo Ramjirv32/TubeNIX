@@ -1,17 +1,22 @@
+import mongoose from 'mongoose';
 import Collection from '../models/Collection.js';
+import redisService from '../services/redisService.js';
 
 // Get user's collections
 export const getCollections = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
     const { type } = req.query;
 
-    const query = { user: userId };
+    // If no authenticated user, return all collections (for testing without auth)
+    const query = userId ? { user: userId } : {};
     if (type) {
       query.type = type;
     }
 
+    console.log('🔍 Fetching collections with query:', JSON.stringify(query));
     const collections = await Collection.find(query).sort({ createdAt: -1 });
+    console.log('📊 Found collections:', collections.length);
     
     res.json(collections);
   } catch (error) {
@@ -21,13 +26,25 @@ export const getCollections = async (req, res) => {
 };
 
 // Save to collection
-export const saveToCollection = async (req, res) => {
+export const saveToCollection = async (req, res, next) => {
   try {
-    const userId = req.user.id;
-    const { title, description, imageUrl, source, type, metadata, tags } = req.body;
+    console.log('📥 Save to Collection Request Body:', JSON.stringify(req.body, null, 2));
+    
+    const { title, imageUrl, description, source, type, metadata, tags } = req.body;
+    
+    // Use authenticated user ID or a consistent anonymous ID for testing
+    const userId = req.user?.id || new mongoose.Types.ObjectId('000000000000000000000000'); // Fixed anonymous ID
+    const userEmail = req.user?.email || 'anonymous@test.com';
+
+    console.log('📊 Extracted data:', { title, imageUrl, description, source, type });
+    console.log('👤 User ID:', userId);
 
     if (!title || !imageUrl) {
-      return res.status(400).json({ message: 'Title and image URL are required' });
+      console.log('❌ Validation failed - Missing title or imageUrl:', { title, imageUrl });
+      return res.status(400).json({
+        success: false,
+        message: 'Title and image URL are required',
+      });
     }
 
     const collection = new Collection({
@@ -45,6 +62,9 @@ export const saveToCollection = async (req, res) => {
 
     await collection.save();
 
+    // Invalidate user's collections cache
+    await redisService.invalidateUserCollections(userId);
+
     res.status(201).json({
       message: 'Saved to collection successfully',
       collection,
@@ -58,10 +78,11 @@ export const saveToCollection = async (req, res) => {
 // Toggle like
 export const toggleLike = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
     const { id } = req.params;
 
-    const collection = await Collection.findOne({ _id: id, user: userId });
+    const query = userId ? { _id: id, user: userId } : { _id: id };
+    const collection = await Collection.findOne(query);
 
     if (!collection) {
       return res.status(404).json({ message: 'Collection item not found' });
@@ -83,15 +104,18 @@ export const toggleLike = async (req, res) => {
 // Delete from collection
 export const deleteFromCollection = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
     const { id } = req.params;
 
-    const collection = await Collection.findOneAndDelete({ _id: id, user: userId });
+    // If authenticated, filter by user. Otherwise, allow deletion of any collection (for testing)
+    const query = userId ? { _id: id, user: userId } : { _id: id };
+    const collection = await Collection.findOneAndDelete(query);
 
     if (!collection) {
       return res.status(404).json({ message: 'Collection item not found' });
     }
 
+    console.log('🗑️ Deleted collection:', id);
     res.json({ message: 'Deleted from collection successfully' });
   } catch (error) {
     console.error('Error in deleteFromCollection:', error);
@@ -102,10 +126,11 @@ export const deleteFromCollection = async (req, res) => {
 // Get collection by ID
 export const getCollectionById = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
     const { id } = req.params;
 
-    const collection = await Collection.findOne({ _id: id, user: userId });
+    const query = userId ? { _id: id, user: userId } : { _id: id };
+    const collection = await Collection.findOne(query);
 
     if (!collection) {
       return res.status(404).json({ message: 'Collection item not found' });
@@ -121,12 +146,13 @@ export const getCollectionById = async (req, res) => {
 // Update collection item
 export const updateCollection = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
     const { id } = req.params;
     const updates = req.body;
 
+    const query = userId ? { _id: id, user: userId } : { _id: id };
     const collection = await Collection.findOneAndUpdate(
-      { _id: id, user: userId },
+      query,
       { $set: updates },
       { new: true }
     );

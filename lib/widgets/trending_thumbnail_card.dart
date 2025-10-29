@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/trending_thumbnail_model.dart';
 
 /// Trending Thumbnail Card
@@ -16,6 +17,10 @@ class TrendingThumbnailCard extends StatelessWidget {
     required this.onSave,
     required this.onDownload,
   });
+
+  bool _isValidImageUrl(String url) {
+    return url.startsWith('http://') || url.startsWith('https://');
+  }
 
   Color _getColorFromString(String colorString) {
     switch (colorString) {
@@ -67,23 +72,66 @@ class TrendingThumbnailCard extends StatelessWidget {
                 Container(
                   height: 120,
                   width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        _getColorFromString(thumbnail.imageUrl),
-                        _getColorFromString(thumbnail.imageUrl).withOpacity(0.7),
-                      ],
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.play_circle_outline,
-                      size: 50,
-                      color: Colors.white.withOpacity(0.8),
-                    ),
-                  ),
+                  child: _isValidImageUrl(thumbnail.imageUrl) 
+                    ? CachedNetworkImage(
+                        imageUrl: thumbnail.imageUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _getColorFromString(thumbnail.imageUrl),
+                                _getColorFromString(thumbnail.imageUrl).withOpacity(0.7),
+                              ],
+                            ),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _getColorFromString(thumbnail.imageUrl),
+                                _getColorFromString(thumbnail.imageUrl).withOpacity(0.7),
+                              ],
+                            ),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.image_not_supported_outlined,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              _getColorFromString(thumbnail.imageUrl),
+                              _getColorFromString(thumbnail.imageUrl).withOpacity(0.7),
+                            ],
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.play_circle_outline,
+                            size: 50,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                        ),
+                      ),
                 ),
                 // CTR Badge
                 Positioned(

@@ -22,10 +22,11 @@ class ThumbnailGeneratorScreen extends StatefulWidget {
 }
 
 class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final TextEditingController _promptController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   late AnimationController _animationController;
+  late TabController _tabController;
 
   bool _isGenerating = false;
   bool _isLoggedIn = false;
@@ -40,6 +41,7 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+    _tabController = TabController(length: 3, vsync: this, initialIndex: _selectedTabIndex);
     _checkAuthStatus();
     if (widget.initialPrompt != null) {
       _promptController.text = widget.initialPrompt!;
@@ -51,12 +53,13 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
     _promptController.dispose();
     _scrollController.dispose();
     _animationController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
   Future<void> _checkAuthStatus() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('auth_token');
     setState(() {
       _isLoggedIn = token != null && token.isNotEmpty;
     });
@@ -85,19 +88,17 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
       return;
     }
 
-    if (!_isLoggedIn) {
-      _showError('Please log in to generate thumbnails');
-      return;
-    }
 
     setState(() {
       _isGenerating = true;
     });
 
     try {
+
       final result = await thumbnailService.generateThumbnail(
         prompt: _promptController.text.trim(),
-        saveToCollection: true,
+        // Only auto-save to the user's collection if they're logged in.
+        saveToCollection: _isLoggedIn,
         makePublic: false,
       );
 
@@ -109,8 +110,10 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
       _animationController.forward();
       _showSuccess('Thumbnail generated successfully!');
       
-      // Reload user thumbnails
-      _loadUserThumbnails();
+      // Reload user thumbnails only when logged in
+      if (_isLoggedIn) {
+        _loadUserThumbnails();
+      }
 
     } catch (e) {
       setState(() {
@@ -126,10 +129,6 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
       return;
     }
 
-    if (!_isLoggedIn) {
-      _showError('Please log in to generate thumbnails');
-      return;
-    }
 
     setState(() {
       _isGenerating = true;
@@ -139,7 +138,8 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
       final results = await thumbnailService.generateMultipleThumbnails(
         prompt: _promptController.text.trim(),
         count: 3,
-        saveToCollection: true,
+        // Only auto-save when logged in
+        saveToCollection: _isLoggedIn,
         makePublic: false,
       );
 
@@ -151,8 +151,10 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
       _animationController.forward();
       _showSuccess('Generated ${results.length} thumbnail variations!');
       
-      // Reload user thumbnails
-      _loadUserThumbnails();
+      // Reload user thumbnails only when logged in
+      if (_isLoggedIn) {
+        _loadUserThumbnails();
+      }
 
     } catch (e) {
       setState(() {
@@ -220,7 +222,7 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
           onPressed: () => Navigator.pop(context),
         ),
         bottom: TabBar(
-          controller: TabController(length: 3, vsync: this, initialIndex: _selectedTabIndex),
+          controller: _tabController,
           indicatorColor: const Color(0xFFFF6B35),
           labelColor: Colors.white,
           unselectedLabelColor: Colors.grey,
@@ -233,7 +235,7 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
         ),
       ),
       body: TabBarView(
-        controller: TabController(length: 3, vsync: this, initialIndex: _selectedTabIndex),
+        controller: _tabController,
         children: [
           _buildGenerateTab(),
           _buildMyThumbnailsTab(),
@@ -252,20 +254,20 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
         children: [
           if (!_isLoggedIn) ...[
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.white12,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange),
+                border: Border.all(color: const Color(0xFF333333)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.warning, color: Colors.orange),
+                  const Icon(Icons.info_outline, color: Colors.lightBlueAccent),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
-                      'Please log in to generate AI thumbnails',
-                      style: TextStyle(color: Colors.orange),
+                      'You can generate thumbnails as a guest. Log in to save to your account and access "My Thumbnails".',
+                      style: TextStyle(color: Colors.white70),
                     ),
                   ),
                   TextButton(
@@ -318,7 +320,7 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _isLoggedIn && !_isGenerating ? _generateThumbnail : null,
+                  onPressed: !_isGenerating ? _generateThumbnail : null,
                   icon: _isGenerating
                       ? const SizedBox(
                           width: 20,
@@ -339,7 +341,7 @@ class _ThumbnailGeneratorScreenState extends State<ThumbnailGeneratorScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _isLoggedIn && !_isGenerating ? _generateMultipleThumbnails : null,
+                  onPressed: !_isGenerating ? _generateMultipleThumbnails : null,
                   icon: const Icon(Icons.burst_mode),
                   label: const Text('3 Variations'),
                   style: ElevatedButton.styleFrom(
